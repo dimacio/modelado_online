@@ -69,6 +69,13 @@ th{font:600 .7rem var(--sans);text-transform:uppercase;letter-spacing:.06em;colo
 .lienzo openchemlib-editor{display:block;width:100%;height:100%}
 #panel-descriptores{display:flex;flex-direction:column;gap:20px}
 .lienzo-grande{padding:12px}
+.vistas{display:flex;gap:4px;align-items:center;margin-bottom:10px}
+.vistas button{font:500 .82rem var(--sans);padding:6px 13px;border:1px solid var(--linea);border-radius:999px;background:transparent;color:var(--tenue);cursor:pointer}
+.vistas button.activa{background:var(--acento-suave);border-color:var(--acento);color:var(--acento)}
+.pie3d{margin-left:auto;font:.78rem var(--mono);color:var(--tenue)}
+#caja3d{position:relative}
+#visor3d{width:100%;height:100%}
+.sinGeo{position:absolute;inset:0;display:grid;place-content:center;text-align:center;pointer-events:none}
 .lienzo-grande .lienzo{height:clamp(380px,72vh,760px)}
 .barra{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:start}
 .barra .campo{min-width:0}
@@ -96,7 +103,15 @@ select{width:100%;font:14px var(--sans);padding:9px 10px;border:1px solid var(--
 
   <div id="panel-descriptores">
     <div class="tarjeta lienzo-grande">
-      <div class="lienzo"><openchemlib-editor id="editor"></openchemlib-editor></div>
+      <div class="vistas">
+        <button data-v="2d" class="activa">Dibujo 2D</button>
+        <button data-v="3d">Geometría 3D</button>
+        <span class="pie3d" id="pie3d"></span>
+      </div>
+      <div class="lienzo" id="caja2d"><openchemlib-editor id="editor"></openchemlib-editor></div>
+      <div class="lienzo" id="caja3d" hidden><div id="visor3d"></div>
+        <p class="vacio sinGeo" id="sinGeo">Todavía no hay geometría. Apretá Calcular y aparece acá.</p>
+      </div>
     </div>
 
     <div class="tarjeta barra">
@@ -179,6 +194,7 @@ select{width:100%;font:14px var(--sans);padding:9px 10px;border:1px solid var(--
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@rdkit/rdkit@2026.9.2/dist/RDKit_minimal.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.4.2/3Dmol-min.js" crossorigin="anonymous"></script>
 <script type="module">
 import OCL, { registerCustomElement } from 'https://cdn.jsdelivr.net/npm/openchemlib@9.25.2/dist/openchemlib.js';
 import { loadOCC } from 'https://cdn.jsdelivr.net/npm/@peterspackman/occjs@0.9.7/dist/index.browser.js';
@@ -198,7 +214,7 @@ const EJEMPLOS = [
 
 const $ = (id) => document.getElementById(id);
 const estado = (t, err) => { const e = $('estado'); e.textContent = t; e.classList.toggle('error', !!err); };
-let RDKit, OCC, serie = [];
+let RDKit, OCC, serie = [], ultimaGeometria = null, visor = null;
 
 $('ejemplos').innerHTML = EJEMPLOS.map(([n, s], i) =>
   `<button data-i="${i}">${n}</button>`).join('');
@@ -236,6 +252,7 @@ function calcular(smiles) {
   ff.minimise();
   r.atomos = conf.getAllAtoms();
   r.mmff94 = ff.getTotalEnergy();
+  ultimaGeometria = { molfile: conf.toMolfile(), nombre: smiles, E: r.mmff94, n: r.atomos };
   t.geometria = performance.now() - t0;
 
   t0 = performance.now();
@@ -286,6 +303,7 @@ function pintar(r, t) {
   $('tiempos').innerHTML = [
     ['Geometría 3D + MMFF94', t.geometria], ['GFN2-xTB', t.gfn2], ['Descriptores RDKit', t.rdkit],
   ].map(([n, ms]) => `<div class="paso"><span>${n}</span><span>${(ms / 1000).toFixed(2)} s</span></div>`).join('')
+    + `<div class="paso"><span>Energía MMFF94</span><span>${r.mmff94.toFixed(2)} kcal/mol</span></div>`
     + `<div class="paso"><span>Átomos · SCF</span><span>${r.atomos} · ${r.convergio ? 'convergió' : 'NO convergió'}</span></div>`;
 }
 
@@ -316,6 +334,7 @@ $('calcular').addEventListener('click', () => {
     try {
       const { r, t } = calcular(s);
       pintar(r, t);
+      mostrarGeometria();
       serie.push(r); pintarSerie();
       estado(`Listo en ${((t.geometria + t.gfn2 + t.rdkit) / 1000).toFixed(2)} s.`);
     } catch (e) {
@@ -338,6 +357,31 @@ $('descargar').addEventListener('click', () => {
   a.download = 'descriptores.csv'; a.click(); URL.revokeObjectURL(a.href);
 });
 $('limpiar').addEventListener('click', () => { serie = []; pintarSerie(); estado('Serie vaciada.'); });
+
+
+// ───────────────────────── visor de geometría 3D ─────────────────────────
+function mostrarGeometria() {
+  if (!ultimaGeometria || !window.$3Dmol) return;
+  $('sinGeo').hidden = true;
+  if (!visor) {
+    visor = $3Dmol.createViewer($('visor3d'), { backgroundColor: 'white' });
+  }
+  visor.clear();
+  visor.addModel(ultimaGeometria.molfile, 'mol');
+  visor.setStyle({}, { stick: { radius: 0.13 }, sphere: { scale: 0.22 } });
+  visor.zoomTo();
+  visor.render();
+  $('pie3d').textContent = `${ultimaGeometria.n} átomos · MMFF94 = ${ultimaGeometria.E.toFixed(2)} kcal/mol`;
+}
+
+document.querySelector('.vistas').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  [...e.currentTarget.querySelectorAll('button')].forEach((x) => x.classList.toggle('activa', x === b));
+  const es3d = b.dataset.v === '3d';
+  $('caja2d').hidden = es3d;
+  $('caja3d').hidden = !es3d;
+  if (es3d) { mostrarGeometria(); if (visor) visor.resize(); }
+});
 
 // ───────────────────────── editor de estructuras ─────────────────────────
 registerCustomElement();

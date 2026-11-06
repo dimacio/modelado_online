@@ -27,7 +27,12 @@ SMILES → confórmero 3D → MMFF94 → GFN2-xTB → descriptores, todo en la p
 acumula en una tabla que se exporta como CSV.
 
 Incluye un editor de estructuras 2D (OpenChemLib) conectado al campo de SMILES en los dos
-sentidos.
+sentidos, y un visor de la geometría 3D optimizada (3Dmol.js), que se puede rotar con el mouse.
+
+El dibujo es en 2D, como en cualquier editor químico. La estructura tridimensional no se dibuja:
+se genera a partir del dibujo con un generador de confórmeros y se minimiza con el campo de
+fuerzas MMFF94. La pestaña "Geometría 3D" muestra el resultado de esa minimización, con su
+energía. Sobre esa geometría corre después el cálculo GFN2.
 
 ## Docking
 
