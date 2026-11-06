@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>Prueba de docking en navegador</title></head>
+<body><pre id="log">listo</pre>
+<script type="module">
+import WEBINA_MODULE from './lib/Webina/vina.1.0.5.js';
+window.__fin = null;
+
+window.dockear = function (params, receptorTxt, ligandoTxt) {
+  return new Promise((resolve) => {
+    const t0 = performance.now();
+    let out = '', err = '', inicializado = null;
+    const mod = new WEBINA_MODULE({
+      logReadFiles: true,
+      noInitialRun: true,
+      locateFile: (p) => './lib/Webina/' + p,
+      preRun: [function (This) {
+        This.FS.writeFile('/receptor.pdbqt', receptorTxt);
+        This.FS.writeFile('/ligand.pdbqt', ligandoTxt);
+        inicializado = This;
+      }],
+      print: (t) => { out += t + '\n'; },
+      printErr: (t) => { err += t + '\n'; },
+      onExit: () => {
+        let pose = '';
+        try { pose = inicializado.FS.readFile('/ligand_out.pdbqt', { encoding: 'utf8' }); } catch (e) {}
+        resolve({ ok: true, ms: performance.now() - t0, stdout: out, stderr: err.slice(0, 600), pose });
+      },
+      onError: (e) => resolve({ ok: false, error: String(e).slice(0, 300), stdout: out, stderr: err.slice(0, 600) }),
+      catchError: (e) => resolve({ ok: false, error: String(e).slice(0, 300), stdout: out, stderr: err.slice(0, 600) }),
+    });
+    Promise.resolve(mod).then((m) => (m && m.ready) ? m.ready : m).then((m) => {
+      const args = [];
+      for (const [k, v] of Object.entries(params)) { args.push('--' + k); args.push(String(v)); }
+      args.push('--receptor', '/receptor.pdbqt', '--ligand', '/ligand.pdbqt', '--out', '/ligand_out.pdbqt');
+      m.callMain(args);
+    });
+  });
+};
+document.getElementById('log').textContent = 'modulo cargado';
+window.__listo = true;
+</script></body></html>
