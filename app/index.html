@@ -197,10 +197,14 @@ th{font:700 .56rem var(--pix);text-transform:uppercase;color:var(--tenue);backgr
 .ayuda button{font:700 .62rem var(--pix);text-transform:uppercase;padding:8px 13px;cursor:pointer;
   color:var(--tinta);background:var(--panel);border:2px solid var(--tinta)}
 .ayuda button:hover{background:var(--papel)}
+a{color:var(--celeste3);text-decoration-thickness:1px;text-underline-offset:2px}
+a:hover{color:var(--ciruela)}
+a:focus-visible{outline:2px solid var(--celeste);outline-offset:2px}
 .compartir{display:grid;grid-template-columns:168px minmax(0,1fr);gap:18px;align-items:start}
 .compartir .qr{width:168px;border:2px solid var(--tinta);background:#fff;line-height:0}
 .compartir .qr svg{display:block;width:100%;height:auto}
-.compartir-txt p:last-child{margin-top:14px}
+.compartir-txt p:nth-last-child(2){margin-top:14px}
+.compartir .ig{margin-top:14px;color:var(--tenue);font-size:.8rem}
 .compartir code{word-break:break-all}
 @media (max-width:620px){.compartir{grid-template-columns:1fr}.compartir .qr{width:min(220px,100%)}}
 </style>
@@ -495,6 +499,8 @@ th{font:700 .56rem var(--pix);text-transform:uppercase;color:var(--tenue);backgr
               se abre y funciona.</p>
               <p><code id="enlace">https://dimacio.github.io/modelado_online/</code></p>
               <p><button id="copiarEnlace">Copiar enlace</button></p>
+              <p class="ig">Si te interesa el tema, en Instagram sigo contando de qué va esto:
+              <a href="https://www.instagram.com/la.data.atada/" target="_blank" rel="noopener noreferrer">@la.data.atada</a>.</p>
             </div>
           </div>
         </div>
@@ -527,6 +533,7 @@ th{font:700 .56rem var(--pix);text-transform:uppercase;color:var(--tenue);backgr
   </div>
 
   <p class="nota">GFN2-xTB es un método semiempírico de <em>tight binding</em>, no DFT. El momento dipolar se reconstruye a partir de los multipolos atómicos CAMM. Los valores dependen del confórmero: si volvés a calcular la misma molécula, el dipolo puede moverse y el HOMO casi no. Componentes: <code>openchemlib</code>, <code>@rdkit/rdkit</code> y <code>@peterspackman/occjs</code>.</p>
+  <p class="nota">Más química y datos en Instagram: <a href="https://www.instagram.com/la.data.atada/" target="_blank" rel="noopener noreferrer">@la.data.atada</a>.</p>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@rdkit/rdkit@2026.9.2/dist/RDKit_minimal.js" crossorigin="anonymous"></script>
