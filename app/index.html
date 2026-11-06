@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Descriptores moleculares en el navegador</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Banco de trabajo: columna de entrada a la izquierda, resultados y serie a la derecha */
+:root{
+  --fondo:#f7f8f7; --panel:#ffffff; --tinta:#1b2220; --tenue:#5d6b66;
+  --linea:#d9dedb; --acento:#16706b; --acento-suave:#e3efed; --alerta:#9a4b2f;
+  --sans:'IBM Plex Sans',system-ui,-apple-system,Segoe UI,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --fondo:#111614; --panel:#1a211f; --tinta:#e6ecea; --tenue:#92a09b;
+  --linea:#2c3634; --acento:#54bdb3; --acento-suave:#1d302e; --alerta:#e0896a;
+  color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --fondo:#111614; --panel:#1a211f; --tinta:#e6ecea; --tenue:#92a09b;
+  --linea:#2c3634; --acento:#54bdb3; --acento-suave:#1d302e; --alerta:#e0896a;
+  color-scheme:dark;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--tinta);font:16px/1.55 var(--sans)}
+.envoltorio{max-width:1120px;margin:0 auto;padding-inline:max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-right,0px));padding-block:32px 56px}
+h1{font-size:1.5rem;font-weight:600;margin:0 0 4px;text-wrap:balance;letter-spacing:-.01em}
+.subtitulo{color:var(--tenue);margin:0 0 28px;max-width:62ch;font-size:.95rem}
+.columnas{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:820px){.columnas{grid-template-columns:1fr}}
+.tarjeta{background:var(--panel);border:1px solid var(--linea);border-radius:10px;padding:20px;min-width:0}
+label{display:block;font-size:.76rem;font-weight:500;text-transform:uppercase;letter-spacing:.07em;color:var(--tenue);margin-bottom:7px}
+input[type=text]{width:100%;font:15px var(--mono);padding:10px 11px;border:1px solid var(--linea);border-radius:7px;background:var(--fondo);color:var(--tinta)}
+input[type=text]:focus-visible{outline:2px solid var(--acento);outline-offset:1px;border-color:var(--acento)}
+.ejemplos{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.ejemplos button{font:500 .78rem var(--sans);padding:5px 10px;border:1px solid var(--linea);border-radius:999px;background:transparent;color:var(--tenue);cursor:pointer}
+.ejemplos button:hover{border-color:var(--acento);color:var(--acento)}
+.primario{margin-top:18px;width:100%;font:600 .95rem var(--sans);padding:11px;border:0;border-radius:7px;background:var(--acento);color:#fff;cursor:pointer}
+.primario:disabled{opacity:.5;cursor:default}
+.estado{margin-top:12px;font-size:.84rem;color:var(--tenue);min-height:1.4em}
+.estado.error{color:var(--alerta)}
+.paso{display:flex;justify-content:space-between;gap:12px;font:.82rem/1.9 var(--mono);color:var(--tenue);border-bottom:1px dashed var(--linea);padding:1px 0}
+.paso:last-child{border-bottom:0}
+h2{font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--tenue);margin:0 0 14px}
+.rejilla{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:0;background:var(--panel);border:1px solid var(--linea);border-radius:8px;overflow:hidden}
+.celda{padding:12px 14px;min-width:0;box-shadow:1px 0 0 var(--linea),0 1px 0 var(--linea)}
+.celda .k{font-size:.72rem;color:var(--tenue);letter-spacing:.04em}
+.celda .v{font:500 1.18rem var(--mono);font-variant-numeric:tabular-nums;margin-top:2px}
+.celda .u{font-size:.72rem;color:var(--tenue);margin-left:3px}
+.vacio{color:var(--tenue);font-size:.9rem;padding:8px 0}
+table{width:100%;border-collapse:collapse;font:.84rem var(--mono);font-variant-numeric:tabular-nums}
+th,td{text-align:right;padding:7px 9px;border-bottom:1px solid var(--linea);white-space:nowrap}
+th:first-child,td:first-child{text-align:left;font-family:var(--sans)}
+th{font:600 .7rem var(--sans);text-transform:uppercase;letter-spacing:.06em;color:var(--tenue)}
+.desborde{overflow-x:auto;margin-inline:-6px;padding-inline:6px}
+.acciones{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.acciones button{font:500 .82rem var(--sans);padding:7px 13px;border:1px solid var(--linea);border-radius:7px;background:transparent;color:var(--tinta);cursor:pointer}
+.acciones button:hover{border-color:var(--acento);color:var(--acento)}
+.nota{margin-top:26px;font-size:.82rem;color:var(--tenue);max-width:72ch}
+.nota code{font:.95em var(--mono);background:var(--acento-suave);padding:1px 5px;border-radius:4px}
+.pila{display:flex;flex-direction:column;gap:24px;min-width:0}
+</style>
+</head>
+<body>
+<div class="envoltorio">
+  <h1>Descriptores moleculares en el navegador</h1>
+  <p class="subtitulo">Dibujo a geometría 3D, optimización MMFF94, cálculo GFN2-xTB y descriptores fisicoquímicos. Todo corre en esta pestaña: no hay servidor de cálculo ni nada que instalar.</p>
+
+  <div class="columnas">
+    <div class="tarjeta">
+      <label for="smiles">SMILES</label>
+      <input type="text" id="smiles" value="O=C1CSC(c2c(Cl)cccc2Cl)N1Cc1ccco1" spellcheck="false">
+      <div class="ejemplos" id="ejemplos"></div>
+      <button class="primario" id="calcular" disabled>Cargando librerías…</button>
+      <div class="estado" id="estado"></div>
+      <div id="tiempos" style="margin-top:14px"></div>
+    </div>
+
+    <div class="pila">
+      <div class="tarjeta">
+        <h2>Resultado</h2>
+        <div id="resultado"><p class="vacio">Elegí una molécula y calculá.</p></div>
+      </div>
+      <div class="tarjeta">
+        <h2>Serie</h2>
+        <div class="desborde"><table id="tabla"><thead></thead><tbody></tbody></table></div>
+        <div id="serieVacia" class="vacio">Cada cálculo se agrega acá para armar la tabla de descriptores.</div>
+        <div class="acciones">
+          <button id="copiar">Copiar como CSV</button>
+          <button id="descargar">Descargar CSV</button>
+          <button id="limpiar">Vaciar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="nota">GFN2-xTB es un método semiempírico de <em>tight binding</em>, no DFT. El momento dipolar se reconstruye a partir de los multipolos atómicos CAMM. Los valores dependen del confórmero: si volvés a calcular la misma molécula, el dipolo puede moverse y el HOMO casi no. Componentes: <code>openchemlib</code>, <code>@rdkit/rdkit</code> y <code>@peterspackman/occjs</code>.</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@rdkit/rdkit@2026.9.2/dist/RDKit_minimal.js"></script>
+<script type="module">
+import OCL from 'https://cdn.jsdelivr.net/npm/openchemlib@9.25.2/dist/openchemlib.js';
+import { loadOCC } from 'https://cdn.jsdelivr.net/npm/@peterspackman/occjs@0.9.7/dist/index.browser.js';
+
+const BASE_OCL = 'https://cdn.jsdelivr.net/npm/openchemlib@9.25.2/dist/';
+const BASE_RDK = 'https://cdn.jsdelivr.net/npm/@rdkit/rdkit@2026.9.2/dist/';
+const BASE_OCC = 'https://cdn.jsdelivr.net/npm/@peterspackman/occjs@0.9.7/dist/';
+const AU2D = 2.541746473, HA2EV = 27.211386;
+
+const EJEMPLOS = [
+  ['TZD 1',       'O=C1CSC(c2c(Cl)cccc2Cl)N1Cc1ccco1'],
+  ['TZD 11',      'O=C1CSC(c2c(OC)cc(OC)cc2OC)N1Cc1ccco1'],
+  ['Efavirenz',   'O=C1N[C@](C#CC2CC2)(C(F)(F)F)c2cc(Cl)ccc2O1'],
+  ['Nevirapina',  'Cc1ccnc2c1NC(=O)c1cccnc1N2C1CC1'],
+  ['Aspirina',    'CC(=O)Oc1ccccc1C(=O)O'],
+];
+
+const $ = (id) => document.getElementById(id);
+const estado = (t, err) => { const e = $('estado'); e.textContent = t; e.classList.toggle('error', !!err); };
+let RDKit, OCC, serie = [];
+
+$('ejemplos').innerHTML = EJEMPLOS.map(([n, s], i) =>
+  `<button data-i="${i}">${n}</button>`).join('');
+$('ejemplos').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  $('smiles').value = EJEMPLOS[+b.dataset.i][1];
+});
+
+(async function arrancar() {
+  try {
+    estado('Registrando recursos de OpenChemLib…');
+    OCL.Resources.register(await (await fetch(BASE_OCL + 'resources.json')).text());
+    estado('Cargando RDKit…');
+    RDKit = await window.initRDKitModule({ locateFile: (f) => BASE_RDK + f });
+    estado('Cargando el motor GFN2 (unos 6 MB)…');
+    OCC = await loadOCC({ wasmPath: BASE_OCC + 'occjs.wasm', dataPath: BASE_OCC + 'occjs.data' });
+    estado('Listo.');
+    $('calcular').disabled = false;
+    $('calcular').textContent = 'Calcular';
+  } catch (e) {
+    estado('No se pudieron cargar las librerías: ' + e, true);
+  }
+})();
+
+const vec = (v) => { const n = v.size(), a = []; for (let i = 0; i < n; i++) a.push(v.get(i)); return a; };
+
+function calcular(smiles) {
+  const t = {}, r = { smiles };
+  let t0 = performance.now();
+
+  const mol = OCL.Molecule.fromSmiles(smiles);
+  const conf = new OCL.ConformerGenerator(Date.now() & 0xffff).getOneConformerAsMolecule(mol);
+  if (!conf) throw new Error('no se pudo generar un confórmero');
+  const ff = new OCL.ForceFieldMMFF94(conf, OCL.ForceFieldMMFF94.MMFF94);
+  ff.minimise();
+  r.atomos = conf.getAllAtoms();
+  r.mmff94 = ff.getTotalEnergy();
+  t.geometria = performance.now() - t0;
+
+  t0 = performance.now();
+  const Z = [], pos = [];
+  for (let i = 0; i < r.atomos; i++) {
+    Z.push(conf.getAtomicNo(i));
+    pos.push([conf.getAtomX(i), conf.getAtomY(i), conf.getAtomZ(i)]);
+  }
+  const pm = OCC.Mat3N.create(Z.length);
+  pos.forEach((p, i) => { pm.set(0, i, p[0]); pm.set(1, i, p[1]); pm.set(2, i, p[2]); });
+  const molecula = new OCC.Molecule(OCC.IVec.fromArray(Z), pm);
+  const res = OCC.XtbCalculator.fromMolecule(molecula, OCC.XtbMethod.GFN2).singlePoint();
+
+  const en = vec(res.orbitalEnergies), oc = vec(res.orbitalOccupations);
+  const nocc = oc.filter((o) => o > 0.5).length;
+  r.homo = en[nocc - 1] * HA2EV;
+  r.lumo = en[nocc] * HA2EV;
+  r.gap = r.lumo - r.homo;
+
+  const q = vec(res.atomicCharges), ad = res.atomicDipoles, P = molecula.positions();
+  const mu = [0, 0, 0];
+  for (let i = 0; i < Z.length; i++)
+    for (let k = 0; k < 3; k++) mu[k] += q[i] * P.get(k, i) + ad.get(k, i);
+  r.dipolo = Math.hypot(...mu) * AU2D;
+  r.convergio = res.converged;
+  t.gfn2 = performance.now() - t0;
+
+  t0 = performance.now();
+  const m2 = RDKit.get_mol(smiles);
+  const d = JSON.parse(m2.get_descriptors());
+  m2.delete();
+  r.clogP = d.CrippenClogP; r.mr = d.CrippenMR; r.mw = d.amw; r.tpsa = d.tpsa; r.asa = d.labuteASA;
+  t.rdkit = performance.now() - t0;
+
+  return { r, t };
+}
+
+const CAMPOS = [
+  ['mw', 'Masa', 'g/mol', 2], ['clogP', 'clogP', '', 3], ['mr', 'Refractividad', '', 2],
+  ['tpsa', 'TPSA', 'Å²', 1], ['asa', 'Superficie', 'Å²', 1], ['dipolo', 'Dipolo', 'D', 2],
+  ['homo', 'HOMO', 'eV', 3], ['lumo', 'LUMO', 'eV', 3], ['gap', 'Gap', 'eV', 3],
+];
+
+function pintar(r, t) {
+  $('resultado').innerHTML = '<div class="rejilla">' + CAMPOS.map(([k, n, u, dec]) =>
+    `<div class="celda"><div class="k">${n}</div><div class="v">${r[k].toFixed(dec)}<span class="u">${u}</span></div></div>`
+  ).join('') + '</div>';
+  $('tiempos').innerHTML = [
+    ['Geometría 3D + MMFF94', t.geometria], ['GFN2-xTB', t.gfn2], ['Descriptores RDKit', t.rdkit],
+  ].map(([n, ms]) => `<div class="paso"><span>${n}</span><span>${(ms / 1000).toFixed(2)} s</span></div>`).join('')
+    + `<div class="paso"><span>Átomos · SCF</span><span>${r.atomos} · ${r.convergio ? 'convergió' : 'NO convergió'}</span></div>`;
+}
+
+function pintarSerie() {
+  const vacia = serie.length === 0;
+  $('serieVacia').hidden = !vacia;
+  $('tabla').hidden = vacia;
+  if (vacia) { $('tabla').querySelector('thead').innerHTML = ''; $('tabla').querySelector('tbody').innerHTML = ''; return; }
+  $('tabla').querySelector('thead').innerHTML =
+    '<tr><th>SMILES</th>' + CAMPOS.map(([, n]) => `<th>${n}</th>`).join('') + '</tr>';
+  $('tabla').querySelector('tbody').innerHTML = serie.map((r) =>
+    `<tr><td title="${r.smiles}">${r.smiles.length > 22 ? r.smiles.slice(0, 21) + '…' : r.smiles}</td>` +
+    CAMPOS.map(([k, , , dec]) => `<td>${r[k].toFixed(dec)}</td>`).join('') + '</tr>').join('');
+}
+
+function csv() {
+  return ['smiles,' + CAMPOS.map(([k]) => k).join(',')]
+    .concat(serie.map((r) => '"' + r.smiles + '",' + CAMPOS.map(([k, , , dec]) => r[k].toFixed(dec)).join(',')))
+    .join('\n');
+}
+
+$('calcular').addEventListener('click', () => {
+  const s = $('smiles').value.trim();
+  if (!s) { estado('Escribí un SMILES.', true); return; }
+  $('calcular').disabled = true;
+  estado('Calculando…');
+  setTimeout(() => {
+    try {
+      const { r, t } = calcular(s);
+      pintar(r, t);
+      serie.push(r); pintarSerie();
+      estado(`Listo en ${((t.geometria + t.gfn2 + t.rdkit) / 1000).toFixed(2)} s.`);
+    } catch (e) {
+      estado('Error: ' + (e.message || e), true);
+    } finally {
+      $('calcular').disabled = false;
+    }
+  }, 10);
+});
+
+$('copiar').addEventListener('click', async () => {
+  if (!serie.length) { estado('La serie está vacía.', true); return; }
+  try { await navigator.clipboard.writeText(csv()); estado('CSV copiado.'); }
+  catch { estado('No se pudo copiar; usá Descargar.', true); }
+});
+$('descargar').addEventListener('click', () => {
+  if (!serie.length) { estado('La serie está vacía.', true); return; }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv()], { type: 'text/csv' }));
+  a.download = 'descriptores.csv'; a.click(); URL.revokeObjectURL(a.href);
+});
+$('limpiar').addEventListener('click', () => { serie = []; pintarSerie(); estado('Serie vaciada.'); });
+pintarSerie();
+</script>
+</body>
+</html>
