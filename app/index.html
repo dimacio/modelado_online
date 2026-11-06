@@ -131,7 +131,7 @@ th{font:700 .56rem var(--pix);text-transform:uppercase;color:var(--tenue);backgr
 .vistas button.activa{background:var(--celeste);color:var(--tinta)}
 .pie3d{margin-left:auto;font:.72rem var(--mono);color:var(--tenue)}
 #caja3d{position:relative}
-#visor3d{width:100%;height:100%;cursor:grab}
+#visor3d{width:100%;height:100%;cursor:grab;touch-action:none}
 #visor3d.agarrando{cursor:grabbing}
 .taller{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;padding:9px 11px;
   background:var(--papel);border:2px solid var(--tinta)}
@@ -259,7 +259,7 @@ a:focus-visible{outline:2px solid var(--celeste);outline-offset:2px}
         <div class="grupo">
           <span class="rot">Átomo</span>
           <span class="dato" id="selAtomo">ninguno</span>
-          <span class="ayuda">arrastralo con el mouse para moverlo</span>
+          <span class="ayuda">arrastralo para moverlo · con Shift rotás la vista</span>
         </div>
         <div class="grupo">
           <button id="distorsionar">Distorsionar</button>
@@ -421,9 +421,12 @@ a:focus-visible{outline:2px solid var(--celeste);outline-offset:2px}
               <li><em>Calcular</em> genera un confórmero 3D, lo relaja con MMFF94, corre GFN2-xTB y saca los
                   descriptores. Cada cálculo se agrega a la tabla <em>Serie</em>, que se baja como CSV para
                   armar el QSAR.</li>
-              <li>En <em>Geometría 3D</em>: arrastrá con el mouse para rotar, rueda para acercar, y arrastrá
-                  un átomo para moverlo. <em>Distorsionar</em> corre todos los átomos al azar la cantidad de
-                  ångström que pongas al lado.</li>
+              <li>En <em>Geometría 3D</em>: arrastrá el fondo para rotar, rueda para acercar, y arrastrá un
+                  átomo para moverlo — también con el dedo, en una tablet. Si justo tenés un átomo debajo del
+                  cursor y querés rotar igual, mantené <em>Shift</em> mientras arrastrás.
+                  <em>Distorsionar</em> corre todos los átomos al azar la cantidad de ångström que pongas al lado.</li>
+              <li>La cámara no se reacomoda sola cuando los átomos se mueven, para que no te salte la vista
+                  mientras arrastrás: <em>Encuadrar</em> vuelve a centrar cuando lo necesites.</li>
               <li><em>Minimizar</em> relaja la geometría con GFN2 y actualiza dipolo, HOMO, LUMO y gap. Los
                   descriptores 2D (masa, clogP, refractividad, TPSA, superficie) no cambian, porque no dependen
                   de la geometría.</li>
@@ -798,6 +801,13 @@ $('limpiar').addEventListener('click', () => { serie = []; pintarSerie(); estado
 // ───────────────────────── visor de geometría 3D ─────────────────────────
 let yaEncuadrado = false;
 // un solo lugar crea el visor, para que el arrastre quede siempre enganchado
+// el encuadre sólo vale si el lienzo 3D está a la vista: si está oculto mide cero
+// y zoomTo deja la molécula fuera de cuadro para siempre
+function encuadrarSiHaceFalta() {
+  if (yaEncuadrado || !visor || $('caja3d').hidden || !$('visor3d').clientWidth) return false;
+  visor.zoomTo(); yaEncuadrado = true; return true;
+}
+
 function asegurarVisor() {
   if (visor) return;
   visor = $3Dmol.createViewer($('visor3d'), { backgroundColor: 'white' });
@@ -809,10 +819,11 @@ function dibujarCuadro(xyz, pie) {
   $('sinGeo').hidden = true;
   asegurarVisor();
   visor.removeAllModels();
+  visor.removeAllShapes();          // si no, la marca de selección se acumula en cada cuadro
   visor.addModel(xyz, 'xyz');
   visor.setStyle({}, { stick: { radius: 0.13 }, sphere: { scale: 0.22 } });
   // nunca re-encuadrar solo: mueve la cámara bajo el mouse y desorienta
-  if (!yaEncuadrado) { visor.zoomTo(); yaEncuadrado = true; }
+  encuadrarSiHaceFalta();
   visor.render();
   if (pie) $('pie3d').textContent = pie;
 }
@@ -824,7 +835,7 @@ function mostrarGeometria() {
   visor.clear();
   visor.addModel(ultimaGeometria.xyz ?? ultimaGeometria.molfile, ultimaGeometria.xyz ? 'xyz' : 'mol');
   visor.setStyle({}, { stick: { radius: 0.13 }, sphere: { scale: 0.22 } });
-  if (!yaEncuadrado) { visor.zoomTo(); yaEncuadrado = true; }
+  encuadrarSiHaceFalta();
   visor.render();
   $('pie3d').textContent = ultimaGeometria.nivel === 'GFN2'
     ? `${ultimaGeometria.n} átomos · geometría optimizada con GFN2`
@@ -836,7 +847,10 @@ function verVista(v) {
   bs.forEach((x) => x.classList.toggle('activa', x.dataset.v === v));
   $('caja2d').hidden = v === '3d';
   $('caja3d').hidden = v !== '3d';
-  if (v === '3d') { if (visor) visor.resize(); if (geo) $('taller').hidden = false; }
+  if (v === '3d') {
+    if (visor) { visor.resize(); encuadrarSiHaceFalta(); visor.render(); }
+    if (geo) $('taller').hidden = false;
+  }
 }
 
 document.querySelector('.vistas').addEventListener('click', (e) => {
@@ -861,7 +875,7 @@ function pintarGeo(pie) {
   dibujarCuadro(geoAXyz(geo), pie);
   if (atomoSel !== null && visor) {
     const p = geo.xyz.slice(atomoSel*3, atomoSel*3+3);
-    visor.addSphere({ center: { x: p[0], y: p[1], z: p[2] }, radius: 0.5, color: '#cc4426', opacity: 0.5 });
+    visor.addSphere({ center: { x: p[0], y: p[1], z: p[2] }, radius: 0.40, color: '#2a7fa8', opacity: 0.42 });
     visor.render();
   }
   $('taller').hidden = false;
@@ -883,23 +897,25 @@ function atomoBajoCursor(px, py) {
 
 function armarArrastre() {
   const caja = $('visor3d');
-  let arrastrando = false, ultimo = null;
+  let arrastrando = false, ultimo = null, idPuntero = null;
   const pos = (e) => { const r = caja.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
 
-  caja.addEventListener('mousedown', (e) => {
-    if (e.button !== 0) return;
+  caja.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    if (e.shiftKey) return;               // con shift se rota aunque el cursor esté sobre un átomo
     const [x, y] = pos(e);
     const i = atomoBajoCursor(x, y);
     if (i === null) return;               // sin átomo debajo, que 3Dmol rote como siempre
-    atomoSel = i; arrastrando = true; ultimo = [x, y];
+    atomoSel = i; arrastrando = true; ultimo = [x, y]; idPuntero = e.pointerId;
+    try { caja.setPointerCapture(e.pointerId); } catch { /* da igual */ }
     $('selAtomo').textContent = `${geo.et[i]}${i + 1}`;
     caja.classList.add('agarrando');
     e.stopPropagation(); e.preventDefault();
     pintarGeo();
   }, true);
 
-  window.addEventListener('mousemove', (e) => {
-    if (!arrastrando) return;
+  caja.addEventListener('pointermove', (e) => {
+    if (!arrastrando || e.pointerId !== idPuntero) return;
     const [x, y] = pos(e);
     const d = visor.screenOffsetToModel(x - ultimo[0], y - ultimo[1]);
     ultimo = [x, y];
@@ -909,11 +925,13 @@ function armarArrastre() {
     e.stopPropagation(); e.preventDefault();
   }, true);
 
-  window.addEventListener('mouseup', () => {
-    if (!arrastrando) return;
-    arrastrando = false; caja.classList.remove('agarrando');
+  const soltar = (e) => {
+    if (!arrastrando || (e && e.pointerId !== idPuntero)) return;
+    arrastrando = false; idPuntero = null; caja.classList.remove('agarrando');
     estado(`${geo.et[atomoSel]}${atomoSel+1} movido. Minimizá para ver cómo se reacomoda.`);
-  }, true);
+  };
+  caja.addEventListener('pointerup', soltar, true);
+  caja.addEventListener('pointercancel', soltar, true);
 }
 
 $('encuadrar').onclick = () => { if (visor) { visor.zoomTo(); visor.render(); } };
