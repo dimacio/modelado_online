@@ -74,7 +74,11 @@ El aporte, entonces, es el **pipeline completo QSAR + docking en el navegador**,
 
 Existe un precedente de formato de dos papers que conviene considerar: el sitio *Orbital Explorer* se publicó como Technology Report y las actividades de aula que lo usan salieron en un artículo separado. Eso permitiría separar la herramienta de su evaluación pedagógica.
 
-JCE exige designar el tipo de manuscrito al enviar, demostrar relevancia explícita para la enseñanza y el aprendizaje de la química, y definir claramente la audiencia.
+JCE exige designar el tipo de manuscrito al enviar, demostrar relevancia explícita para la enseñanza y el aprendizaje de la química, y definir claramente la audiencia. La extensión recomendada para un Technology Report es de **3000 palabras**, sin contar elementos gráficos, referencias ni material suplementario.
+
+**Preprints.** JCE los admite de forma explícita: se puede depositar un borrador inicial en ChemRxiv, arXiv o bioRxiv. Hay tres condiciones: declarar el preprint en la carta de presentación, explicar los cambios introducidos entre el depósito y el envío, y enlazar el preprint al artículo por DOI una vez publicado. Publicar primero como preprint no cierra la puerta a JCE.
+
+Entre los dos servidores, **ChemRxiv** es el natural para este trabajo: lo gobiernan en conjunto la ACS, la RSC, la GDCh y las sociedades química china y japonesa, cubre química medicinal y computacional, y varias revistas de la ACS permiten transferir directamente desde ahí a su sistema de manuscritos. arXiv también está admitido, pero su química vive en categorías de física y su categoría educativa es de física, no de química; además pide aval de un usuario establecido para quien publica por primera vez en una categoría.
 
 **Dos revistas a no confundir:**
 - *Education in Chemistry* (RSC) es una revista de divulgación bimestral, sin referato. No sirve.
@@ -273,7 +277,7 @@ Ambos descriptores significativos, ambos positivos, misma conclusión química, 
 
 El piloto está previsto para el ciclo 2027 y su calendario corre hacia atrás desde la clase en que se use la herramienta, no desde el inicio del cuatrimestre.
 
-- **Aval ético y consentimiento informado.** Si se publican datos de estudiantes (encuestas, resultados de evaluaciones, registros de uso), JCE requiere declarar aprobación institucional o exención. El requisito exacto debe confirmarse en las guías de autor vigentes. En la UBA implica el comité o la instancia que corresponda en FFyB más consentimiento informado. Es el trámite más lento y por eso condiciona todo lo demás.
+- **Aval ético y consentimiento informado.** Requisito confirmado en las guías de autor de JCE. Hay que identificar el comité de ética o IRB que aprobó el trabajo y su número de aprobación; si no hizo falta revisión formal, hay que explicar por qué. Se exige además una declaración de consentimiento informado cuando el estudio involucra interacción directa con participantes identificables, trabajos de estudiantes o datos personales, y para datos anónimos o agregados hay que explicar cómo se preservó la confidencialidad. Todo eso va en la sección de métodos. La documentación del consentimiento de los estudiantes se sube como material aparte, y los nombres completos no pueden aparecer ni en el manuscrito ni en el material suplementario. Las guías advierten que una presentación sin documentación suficiente puede ser rechazada. En la UBA implica el comité o la instancia que corresponda en FFyB. Es el trámite más lento y por eso condiciona todo lo demás.
 - **Instrumentos diseñados antes del curso.** Pre-test y post-test sobre los contenidos específicos, encuesta de usabilidad estandarizada, y eventualmente comparación entre comisiones. Varios ítems de las secciones de discusión del TP sirven casi tal cual, en particular el de verdadero/falso y la pregunta de dependencia conformacional.
 - **Estabilidad de la herramienta semanas antes de la clase en que se use**, no al comienzo del cuatrimestre.
 - **La validación técnica no depende del piloto.** La sección 4 de este documento ya constituye resultados publicables. Si el piloto se complica, el paper no queda sin evidencia.
