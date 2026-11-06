@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>Prueba de cadena QSAR en navegador</title></head>
+<body>
+<pre id="log">cargando…</pre>
+<script src="lib/RDKit_minimal.js"></script>
+<script type="module">
+import OCL from './lib/openchemlib.js';
+import { loadOCC } from './lib/occjs/index.browser.js';
+
+const AU2D = 2.541746473, HA2EV = 27.211386;
+const log = (s) => { document.getElementById('log').textContent += s + '\n'; };
+const now = () => performance.now();
+window.__estado = { listo: false, error: null };
+
+async function init() {
+  const t = {};
+  t.sab = typeof SharedArrayBuffer !== 'undefined';
+  t.crossOriginIsolated = self.crossOriginIsolated;
+
+  let t0 = now();
+  OCL.Resources.register(await (await fetch('./lib/resources.json')).text());
+  t.ocl_ms = now() - t0;
+
+  t0 = now();
+  window.RDKit = await window.initRDKitModule({ locateFile: (f) => './lib/' + f });
+  t.rdkit_ms = now() - t0;
+  t.rdkit_version = window.RDKit.version();
+
+  t0 = now();
+  window.OCC = await loadOCC({ wasmPath: './lib/occjs/occjs.wasm', dataPath: './lib/occjs/occjs.data' });
+  t.occ_ms = now() - t0;
+
+  window.__carga = t;
+  window.__estado.listo = true;
+  log('librerias cargadas');
+}
+
+window.correrCadena = async function (smiles) {
+  const r = { smiles }, M = window.OCC;
+  let t0 = now();
+
+  // --- 1. SMILES -> conformero 3D -> MMFF94  (OpenChemLib, JS puro) ---
+  const mol = OCL.Molecule.fromSmiles(smiles);
+  const conf = new OCL.ConformerGenerator(0xf00d).getOneConformerAsMolecule(mol);
+  const ff = new OCL.ForceFieldMMFF94(conf, OCL.ForceFieldMMFF94.MMFF94);
+  ff.minimise();
+  r.n_atomos = conf.getAllAtoms();
+  r.E_mmff94 = ff.getTotalEnergy();
+  r.t_3d_ms = now() - t0;
+
+  // --- 2. GFN2 single point  (occjs / WASM) ---
+  t0 = now();
+  const Z = [], P = [];
+  for (let i = 0; i < r.n_atomos; i++) {
+    Z.push(conf.getAtomicNo(i));
+    P.push([conf.getAtomX(i), conf.getAtomY(i), conf.getAtomZ(i)]);
+  }
+  const pm = M.Mat3N.create(Z.length);
+  P.forEach((p, i) => { pm.set(0, i, p[0]); pm.set(1, i, p[1]); pm.set(2, i, p[2]); });
+  const molecule = new M.Molecule(M.IVec.fromArray(Z), pm);
+  const calc = M.XtbCalculator.fromMolecule(molecule, M.XtbMethod.GFN2);
+  const res = calc.singlePoint();
+  r.E_gfn2 = res.totalEnergy;
+  r.converged = res.converged;
+  r.t_gfn2_ms = now() - t0;
+
+  // HOMO / LUMO
+  const toArr = (v) => { const n = v.size(); const a = []; for (let i = 0; i < n; i++) a.push(v.get(i)); return a; };
+  const en = toArr(res.orbitalEnergies), oc = toArr(res.orbitalOccupations);
+  const nocc = oc.filter((o) => o > 0.5).length;
+  r.HOMO_eV = en[nocc - 1] * HA2EV;
+  r.LUMO_eV = en[nocc] * HA2EV;
+  r.gap_eV = r.LUMO_eV - r.HOMO_eV;
+
+  // dipolo por multipolos CAMM: suma de q*R mas los dipolos atomicos
+  const q = toArr(res.atomicCharges);
+  const ad = res.atomicDipoles;            // matriz 3 x N en unidades atomicas
+  const pos = molecule.positions();        // Bohr
+  const mu = [0, 0, 0];
+  for (let i = 0; i < Z.length; i++)
+    for (let k = 0; k < 3; k++) mu[k] += q[i] * pos.get(k, i) + ad.get(k, i);
+  r.dipolo_D = Math.hypot(...mu) * AU2D;
+
+  // gradiente disponible? (habilita optimizacion de geometria desde JS)
+  try { const g = calc.gradient(); r.gradiente_ok = !!g; r.grad_dims = g.rows() + 'x' + g.cols(); } catch (e) { r.gradiente_ok = false; r.grad_err = String(e).slice(0, 120); }
+
+  // --- 3. descriptores 2D (RDKit MinimalLib) ---
+  t0 = now();
+  const m2 = window.RDKit.get_mol(smiles);
+  const d = JSON.parse(m2.get_descriptors());
+  r.clogP = d.CrippenClogP; r.MR = d.CrippenMR; r.amw = d.amw; r.tpsa = d.tpsa; r.labuteASA = d.labuteASA;
+  m2.delete();
+  r.t_rdkit_ms = now() - t0;
+
+  if (performance.memory) r.heap_MB = performance.memory.usedJSHeapSize / 1048576;
+  return r;
+};
+
+init().catch((e) => { window.__estado.error = String(e); log('ERROR: ' + e); });
+</script>
+</body></html>

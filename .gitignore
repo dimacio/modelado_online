@@ -1,0 +1,6 @@
+node_modules/
+spike/lib/
+*.owf.json
+*_opt.xyz
+__pycache__/
+.DS_Store

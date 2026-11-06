@@ -1,0 +1,16 @@
+{
+  "name": "modelado-online-spike",
+  "private": true,
+  "type": "module",
+  "description": "Prueba de concepto: cadena SMILES -> 3D -> GFN2 -> descriptores, entera en el navegador",
+  "scripts": {
+    "preparar": "npm i && node preparar-lib.mjs",
+    "servir": "python3 server.py 8781"
+  },
+  "dependencies": {
+    "@peterspackman/occjs": "^0.9.7",
+    "@rdkit/rdkit": "^2026.9.2",
+    "openchemlib": "^9.25.2"
+  },
+  "devDependencies": { "playwright": "^1.49.0" }
+}
