@@ -255,6 +255,14 @@ const vmax = (a) => a.reduce((m,x)=>Math.max(m,Math.abs(x)),0);
 const leerMat = (m,n) => { const v=[]; for(let i=0;i<n;i++) for(let k=0;k<3;k++) v.push(m.get(k,i)); return v; };
 const armarMat = (v,n) => { const p=OCC.Mat3N.create(n); for(let i=0;i<n;i++) for(let k=0;k<3;k++) p.set(k,i,v[i*3+k]); return p; };
 
+const BOHR = 0.529177210903;
+function xyzDesde(v, etiquetas) {
+  const l = [String(etiquetas.length), 'paso'];
+  for (let i = 0; i < etiquetas.length; i++)
+    l.push(`${etiquetas[i]} ${(v[i*3]*BOHR).toFixed(5)} ${(v[i*3+1]*BOHR).toFixed(5)} ${(v[i*3+2]*BOHR).toFixed(5)}`);
+  return l.join('\n');
+}
+
 async function optimizarGFN2(calc, n, avisar) {
   const MAX = 150, TOL_F = 1e-3, TOL_E = 1e-6, MEM = 8;
   const evaluar = (xx) => {
@@ -270,7 +278,7 @@ async function optimizarGFN2(calc, n, avisar) {
 
   for (pasos = 1; pasos <= MAX; pasos++) {
     if (vmax(g) < TOL_F) break;
-    avisar(pasos, E - E0, vmax(g));
+    avisar(pasos, E - E0, vmax(g), x);
     await new Promise((r) => setTimeout(r, 0));   // devolver el hilo para que la página respire
 
     let q = g.slice(); const alpha = [];
@@ -337,8 +345,16 @@ async function calcular(smiles) {
 
   if ($('optGfn2').checked) {
     const t1 = performance.now();
-    const o = await optimizarGFN2(calc, Z.length, (p, dE, f) =>
-      estado(`Optimizando con GFN2: paso ${p}, ${(dE * 627.509).toFixed(1)} kcal/mol, |F|max ${f.toExponential(1)}`));
+    const etiquetas = [];
+    for (let i = 0; i < Z.length; i++) etiquetas.push(conf.getAtomLabel(i));
+    verVista('3d');                                     // mostrar el lienzo 3D para seguir la relajación
+    dibujarCuadro(xyzDesde(leerMat(calc.positions(), Z.length), etiquetas), 'geometría MMFF94, por optimizar');
+    await new Promise((r) => setTimeout(r, 60));
+    const o = await optimizarGFN2(calc, Z.length, (p, dE, f, pos) => {
+      estado(`Optimizando con GFN2: paso ${p}, ${(dE * 627.509).toFixed(1)} kcal/mol, |F|max ${f.toExponential(1)}`);
+      dibujarCuadro(xyzDesde(pos, etiquetas),
+        `paso ${p} · ΔE ${(dE * 627.509).toFixed(2)} kcal/mol · |F|max ${f.toExponential(1)}`);
+    });
     res = calc.lastResult();
     r.opt = o;
     t.optimizacion = performance.now() - t1;
@@ -421,7 +437,7 @@ $('calcular').addEventListener('click', () => {
       pintar(r, t);
       mostrarGeometria();
       serie.push(r); pintarSerie();
-      estado(`Listo en ${((t.geometria + t.gfn2 + t.rdkit) / 1000).toFixed(2)} s.`);
+      estado(`Listo en ${((t.geometria + t.gfn2 + t.rdkit + (t.optimizacion || 0)) / 1000).toFixed(2)} s.`);
     } catch (e) {
       estado('Error: ' + (e.message || e), true);
     } finally {
@@ -445,6 +461,19 @@ $('limpiar').addEventListener('click', () => { serie = []; pintarSerie(); estado
 
 
 // ───────────────────────── visor de geometría 3D ─────────────────────────
+function dibujarCuadro(xyz, pie) {
+  if (!window.$3Dmol) return;
+  $('sinGeo').hidden = true;
+  if (!visor) visor = $3Dmol.createViewer($('visor3d'), { backgroundColor: 'white' });
+  const primera = !visor.getModel();
+  visor.removeAllModels();
+  visor.addModel(xyz, 'xyz');
+  visor.setStyle({}, { stick: { radius: 0.13 }, sphere: { scale: 0.22 } });
+  if (primera) visor.zoomTo();          // encuadrar solo al principio: si no, la molécula salta
+  visor.render();
+  if (pie) $('pie3d').textContent = pie;
+}
+
 function mostrarGeometria() {
   if (!ultimaGeometria || !window.$3Dmol) return;
   $('sinGeo').hidden = true;
@@ -459,6 +488,14 @@ function mostrarGeometria() {
   $('pie3d').textContent = ultimaGeometria.nivel === 'GFN2'
     ? `${ultimaGeometria.n} átomos · geometría optimizada con GFN2`
     : `${ultimaGeometria.n} átomos · geometría MMFF94 = ${ultimaGeometria.E.toFixed(2)} kcal/mol`;
+}
+
+function verVista(v) {
+  const bs = [...document.querySelectorAll('.vistas button')];
+  bs.forEach((x) => x.classList.toggle('activa', x.dataset.v === v));
+  $('caja2d').hidden = v === '3d';
+  $('caja3d').hidden = v !== '3d';
+  if (v === '3d' && visor) visor.resize();
 }
 
 document.querySelector('.vistas').addEventListener('click', (e) => {

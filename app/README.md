@@ -42,8 +42,23 @@ apagada.
 
 El optimizador es un L-BFGS escrito en la página, con búsqueda de línea de Armijo, porque el
 módulo de optimización que trae la librería solo envuelve Hartree-Fock y DFT. Converge cuando la
-mayor componente de la fuerza baja de 10⁻³ Ha/Bohr. Informa los pasos, el cambio de energía y la
-fuerza máxima alcanzada.
+mayor componente de la fuerza baja de 10⁻³ Ha/Bohr.
+
+La vista cambia sola a "Geometría 3D" y **la relajación se dibuja paso a paso**, con el número de
+paso, la energía acumulada y la fuerza máxima. El encuadre se fija en el primer cuadro y se vuelve
+a ajustar al final, para que la molécula no salte en cada iteración.
+
+## Sobre cuánto se mueven los átomos
+
+Poco, y es lo esperable. Una optimización es una bajada al mínimo local más cercano: relaja
+distancias y ángulos, pero no cambia de confórmero. Para explorar confórmeros distintos hace falta
+un muestreo, que hoy no está: `getOneConformerAsMolecule` devuelve siempre el mismo confórmero,
+el de las torsiones más probables, y la semilla del generador no lo cambia. Comprobado con cinco
+semillas: dipolo idéntico hasta la segunda decimal.
+
+Para muestrear de verdad habría que usar la API de conformeros de OpenChemLib con una de las
+estrategias `STRATEGY_*` e iterar, y después decidir si se toma el de menor energía o un promedio
+de Boltzmann. Es una decisión de diseño pendiente y tiene peso pedagógico.
 
 ## Docking
 
