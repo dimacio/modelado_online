@@ -10,7 +10,11 @@
 <style>
 /* Chrome gris de los noventa: biseles duros, nada redondeado, barras de titulo
    rojo oscuro y pozos hundidos para todo lo que es pantalla. Tema unico. */
+  /* ruido y veteado: SVG embebido, sin pedir imágenes */
 :root{
+  --ruido:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='r'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23r)' opacity='0.55'/%3E%3C/svg%3E");
+  --grano:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.28' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='90' height='90' filter='url(%23g)' opacity='0.5'/%3E%3C/svg%3E");
+  --mota:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.045' numOctaves='5' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23m)' opacity='0.62'/%3E%3C/svg%3E");
   --chrome:#b8b3a8; --chrome2:#aba69b; --luz:#e8e4db;
   --sombra:#5f5a51; --sombra2:#3a362f;
   --hueco:#908b81; --lienzo:#ffffff;
@@ -28,10 +32,12 @@
 [hidden]{display:none!important}
 body{
   margin:0;color:var(--tinta);font:14px/1.5 var(--sans);
-  background:var(--chrome2);
+  background-color:var(--chrome2);
   background-image:
-    repeating-linear-gradient(45deg, rgba(0,0,0,.022) 0 2px, transparent 2px 4px),
-    repeating-linear-gradient(-45deg, rgba(255,255,255,.03) 0 2px, transparent 2px 4px);
+    var(--grano),
+    repeating-linear-gradient(0deg, rgba(0,0,0,.05) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(45deg, rgba(0,0,0,.03) 0 2px, transparent 2px 5px);
+  background-blend-mode:overlay,multiply,normal;
 }
 .envoltorio{max-width:1320px;margin:0 auto;
   padding-inline:max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-right,0px));
@@ -46,18 +52,26 @@ h1{font:700 1.15rem/1.3 var(--pix);letter-spacing:.02em;text-transform:uppercase
 .subtitulo{color:var(--tenue);margin:0 0 20px;max-width:70ch;font-size:.86rem}
 
 /* cada panel es una ventanita con su barra de titulo */
-.tarjeta{position:relative;background:var(--chrome);padding:0;min-width:0;
+.tarjeta{position:relative;padding:0;min-width:0;
+  background-color:var(--chrome);
+  background-image:
+    var(--ruido),
+    var(--mota),
+    radial-gradient(120% 70% at 22% -12%, rgba(255,255,255,.18), transparent 58%),
+    radial-gradient(90% 60% at 85% 112%, rgba(0,0,0,.16), transparent 62%);
+  background-blend-mode:overlay,soft-light,normal,normal;
   border:2px solid;border-color:var(--luz) var(--sombra2) var(--sombra2) var(--luz);
-  box-shadow:2px 2px 0 rgba(0,0,0,.28)}
-.tarjeta > *{margin-inline:14px}
-.tarjeta > *:first-child{margin-top:14px}
-.tarjeta > *:last-child{margin-bottom:14px}
+  box-shadow:2px 2px 0 rgba(0,0,0,.28);padding:14px}
+
 h2{font:700 .68rem var(--pix);text-transform:uppercase;letter-spacing:.04em;color:#f4efe6;
    margin:0 0 12px!important;padding:5px 9px;
-   background:linear-gradient(90deg,var(--azul),var(--azul2));
-   border:1px solid var(--sombra2);
+   background-color:var(--azul2);
+   background-image:var(--ruido),linear-gradient(180deg,rgba(255,255,255,.22),transparent 55%),
+     linear-gradient(90deg,var(--azul),var(--azul2));
+   background-blend-mode:overlay,normal,normal;
+   border:1px solid var(--sombra2);box-shadow:inset 0 -1px 0 rgba(0,0,0,.35);
    width:auto}
-.tarjeta > h2:first-child{margin:2px 2px 12px!important}
+.tarjeta > h2:first-child{margin:-12px -12px 14px!important}   /* la barra de título sale al borde */
 
 label{display:block;font:700 .62rem var(--pix);text-transform:uppercase;color:var(--tenue);margin-bottom:6px}
 
@@ -69,14 +83,18 @@ button{font-family:var(--pix)}
 .ejemplos{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
 .ejemplos button,.acciones button,.vistas button,.pestanas button{
   font:700 .62rem var(--pix);text-transform:uppercase;padding:7px 11px;cursor:pointer;
-  background:var(--chrome);color:var(--tinta);
+  color:var(--tinta);background-color:var(--chrome);
+  background-image:var(--ruido),linear-gradient(180deg,rgba(255,255,255,.18),rgba(0,0,0,.1));
+  background-blend-mode:overlay,normal;
   border:2px solid;border-color:var(--luz) var(--sombra2) var(--sombra2) var(--luz)}
-.ejemplos button:hover,.acciones button:hover,.vistas button:hover{background:#c6c1b6}
+.ejemplos button:hover,.acciones button:hover,.vistas button:hover{background-color:#c6c1b6}
 .ejemplos button:active,.acciones button:active,.vistas button:active,.primario:active{
   border-color:var(--sombra2) var(--luz) var(--luz) var(--sombra2);padding:8px 10px 6px 12px}
 
-.primario{width:100%;font:700 .8rem var(--pix);text-transform:uppercase;padding:11px;cursor:pointer;
-  color:#f8f2e6;background:linear-gradient(180deg,var(--rojo2),var(--rojo));
+.primario{display:block;width:100%;font:700 .8rem var(--pix);text-transform:uppercase;padding:11px;cursor:pointer;
+  color:#f8f2e6;background-color:var(--rojo);
+  background-image:var(--ruido),linear-gradient(180deg,var(--rojo2),var(--rojo));
+  background-blend-mode:overlay,normal;
   border:2px solid;border-color:#e08a6a var(--sombra2) var(--sombra2) #e08a6a;
   text-shadow:1px 1px 0 rgba(0,0,0,.45)}
 .primario:hover:not(:disabled){background:linear-gradient(180deg,#d14d2b,#a03220)}
@@ -142,11 +160,14 @@ th{font:700 .56rem var(--pix);text-transform:uppercase;color:#f4efe6;background:
 .pie3d{margin-left:auto;font:.72rem var(--mono);color:var(--tenue)}
 #caja3d{position:relative}
 #visor3d{width:100%;height:100%}
-.taller{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;padding:9px 11px;background:var(--chrome);
+.taller{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;padding:9px 11px;
+  background-color:var(--chrome);background-image:var(--ruido);background-blend-mode:overlay;
   border:2px solid;border-color:var(--luz) var(--sombra2) var(--sombra2) var(--luz)}
 .taller .grupo{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
 .taller button{font:700 .6rem var(--pix);text-transform:uppercase;padding:6px 9px;cursor:pointer;
-  background:var(--chrome);color:var(--tinta);
+  color:var(--tinta);background-color:var(--chrome);
+  background-image:var(--ruido),linear-gradient(180deg,rgba(255,255,255,.18),rgba(0,0,0,.1));
+  background-blend-mode:overlay,normal;
   border:2px solid;border-color:var(--luz) var(--sombra2) var(--sombra2) var(--luz)}
 .taller button:hover{background:#c6c1b6}
 .taller button.destacado{background:linear-gradient(180deg,var(--rojo2),var(--rojo));color:#f8f2e6;
