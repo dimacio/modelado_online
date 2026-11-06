@@ -61,6 +61,17 @@ th{font:600 .7rem var(--sans);text-transform:uppercase;letter-spacing:.06em;colo
 .nota{margin-top:26px;font-size:.82rem;color:var(--tenue);max-width:72ch}
 .nota code{font:.95em var(--mono);background:var(--acento-suave);padding:1px 5px;border-radius:4px}
 .pila{display:flex;flex-direction:column;gap:24px;min-width:0}
+.pestanas{display:flex;gap:2px;margin-bottom:18px;border-bottom:1px solid var(--linea)}
+.pestanas button{font:500 .9rem var(--sans);padding:9px 16px;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--tenue);cursor:pointer;margin-bottom:-1px}
+.pestanas button.activa{color:var(--acento);border-bottom-color:var(--acento)}
+.lienzo{border:1px solid var(--linea);border-radius:8px;overflow:hidden;background:#fff}
+.lienzo openchemlib-editor{display:block;width:100%;height:340px}
+select{width:100%;font:14px var(--sans);padding:9px 10px;border:1px solid var(--linea);border-radius:7px;background:var(--fondo);color:var(--tinta)}
+.caja{display:grid;grid-template-columns:auto 1fr;gap:7px 10px;align-items:center}
+.caja span{font:.78rem var(--sans);color:var(--tenue)}
+.caja input{font:13px var(--mono);padding:6px 8px;border:1px solid var(--linea);border-radius:6px;background:var(--fondo);color:var(--tinta);width:100%}
+.consola{font:.78rem/1.5 var(--mono);color:var(--tenue);background:var(--fondo);border:1px solid var(--linea);border-radius:7px;padding:11px;max-height:240px;overflow:auto;white-space:pre-wrap;word-break:break-word;margin:0}
+.aviso{background:var(--acento-suave);border:1px solid var(--acento);border-radius:8px;padding:14px 16px;font-size:.88rem}
 </style>
 </head>
 <body>
@@ -68,9 +79,20 @@ th{font:600 .7rem var(--sans);text-transform:uppercase;letter-spacing:.06em;colo
   <h1>Descriptores moleculares en el navegador</h1>
   <p class="subtitulo">Dibujo a geometría 3D, optimización MMFF94, cálculo GFN2-xTB y descriptores fisicoquímicos. Todo corre en esta pestaña: no hay servidor de cálculo ni nada que instalar.</p>
 
-  <div class="columnas">
+  <nav class="pestanas" id="pestanas">
+    <button data-p="descriptores" class="activa">Descriptores</button>
+    <button data-p="docking">Docking</button>
+  </nav>
+
+  <div class="columnas" id="panel-descriptores">
     <div class="tarjeta">
-      <label for="smiles">SMILES</label>
+      <label>Estructura</label>
+      <div class="lienzo"><openchemlib-editor id="editor"></openchemlib-editor></div>
+      <div class="acciones" style="margin-top:10px">
+        <button id="delDibujo">Tomar del dibujo</button>
+        <button id="alDibujo">Llevar al dibujo</button>
+      </div>
+      <label for="smiles" style="margin-top:18px">SMILES</label>
       <input type="text" id="smiles" value="O=C1CSC(c2c(Cl)cccc2Cl)N1Cc1ccco1" spellcheck="false">
       <div class="ejemplos" id="ejemplos"></div>
       <button class="primario" id="calcular" disabled>Cargando librerías…</button>
@@ -96,12 +118,53 @@ th{font:600 .7rem var(--sans);text-transform:uppercase;letter-spacing:.06em;colo
     </div>
   </div>
 
+  <div id="panel-docking" hidden>
+    <div class="columnas">
+      <div class="tarjeta">
+        <label>Receptor</label>
+        <select id="receptor">
+          <option value="datos/receptor-proteasa-hiv-4LL3.pdbqt">Proteasa de HIV (4LL3) — ejemplo</option>
+          <option value="">Subir un .pdbqt propio…</option>
+        </select>
+        <input type="file" id="receptorArchivo" accept=".pdbqt" hidden>
+        <div class="estado" id="receptorEstado"></div>
+
+        <label style="margin-top:16px">Caja de docking</label>
+        <div class="caja">
+          <span>centro x</span><input type="text" id="cx" value="-9.815">
+          <span>centro y</span><input type="text" id="cy" value="15.200">
+          <span>centro z</span><input type="text" id="cz" value="26.964">
+          <span>tamaño x</span><input type="text" id="sx" value="20">
+          <span>tamaño y</span><input type="text" id="sy" value="20">
+          <span>tamaño z</span><input type="text" id="sz" value="20">
+          <span>exhaustiveness</span><input type="text" id="ex" value="8">
+          <span>núcleos</span><input type="text" id="cpu" value="2">
+        </div>
+
+        <button class="primario" id="dockear" disabled>Preparando…</button>
+        <div class="estado" id="dockEstado"></div>
+      </div>
+
+      <div class="pila">
+        <div class="tarjeta">
+          <h2>Poses</h2>
+          <div id="poses"><p class="vacio">El ligando sale del SMILES de la otra pestaña. Se convierte a PDBQT con hidrógenos a pH 7,4 y árbol de torsiones, y se dockea acá mismo.</p></div>
+        </div>
+        <div class="tarjeta">
+          <h2>Salida de Vina</h2>
+          <pre id="vinaSalida" class="consola">—</pre>
+          <div class="acciones"><button id="bajarPose">Descargar PDBQT de poses</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <p class="nota">GFN2-xTB es un método semiempírico de <em>tight binding</em>, no DFT. El momento dipolar se reconstruye a partir de los multipolos atómicos CAMM. Los valores dependen del confórmero: si volvés a calcular la misma molécula, el dipolo puede moverse y el HOMO casi no. Componentes: <code>openchemlib</code>, <code>@rdkit/rdkit</code> y <code>@peterspackman/occjs</code>.</p>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@rdkit/rdkit@2026.9.2/dist/RDKit_minimal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@rdkit/rdkit@2026.9.2/dist/RDKit_minimal.js" crossorigin="anonymous"></script>
 <script type="module">
-import OCL from 'https://cdn.jsdelivr.net/npm/openchemlib@9.25.2/dist/openchemlib.js';
+import OCL, { registerCustomElement } from 'https://cdn.jsdelivr.net/npm/openchemlib@9.25.2/dist/openchemlib.js';
 import { loadOCC } from 'https://cdn.jsdelivr.net/npm/@peterspackman/occjs@0.9.7/dist/index.browser.js';
 
 const BASE_OCL = 'https://cdn.jsdelivr.net/npm/openchemlib@9.25.2/dist/';
@@ -259,7 +322,169 @@ $('descargar').addEventListener('click', () => {
   a.download = 'descriptores.csv'; a.click(); URL.revokeObjectURL(a.href);
 });
 $('limpiar').addEventListener('click', () => { serie = []; pintarSerie(); estado('Serie vaciada.'); });
+
+// ───────────────────────── editor de estructuras ─────────────────────────
+registerCustomElement();
+const editor = $('editor');
+$('delDibujo').addEventListener('click', () => {
+  try {
+    const m = editor.getMolecule();
+    if (!m || m.getAllAtoms() === 0) { estado('El dibujo está vacío.', true); return; }
+    $('smiles').value = m.toSmiles();
+    estado('SMILES tomado del dibujo.');
+  } catch (e) { estado('No se pudo leer el dibujo: ' + e, true); }
+});
+$('alDibujo').addEventListener('click', () => {
+  try {
+    const m = OCL.Molecule.fromSmiles($('smiles').value.trim());
+    m.inventCoordinates();
+    editor.setMolecule(m);
+    estado('Estructura llevada al dibujo.');
+  } catch (e) { estado('SMILES inválido: ' + e, true); }
+});
+
+// ───────────────────────────── pestañas ─────────────────────────────
+let dockingPreparado = false;
+$('pestanas').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  [...$('pestanas').children].forEach((x) => x.classList.toggle('activa', x === b));
+  $('panel-descriptores').hidden = b.dataset.p !== 'descriptores';
+  $('panel-docking').hidden = b.dataset.p !== 'docking';
+  if (b.dataset.p === 'docking' && !dockingPreparado) {
+    dockingPreparado = true;
+    prepararDocking().catch((err) => dockEstado('No se pudo preparar el docking: ' + err, true));
+  }
+});
+
+// ───────────────────────────── docking ─────────────────────────────
+const dockEstado = (t, err) => { const e = $('dockEstado'); e.textContent = t; e.classList.toggle('error', !!err); };
+let OB, WEBINA, receptorTxt = '', ultimaPose = '';
+
+function cargarScript(src) {
+  return new Promise((ok, mal) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = ok; s.onerror = () => mal(new Error('no se pudo cargar ' + src));
+    document.head.appendChild(s);
+  });
+}
+
+async function prepararDocking() {
+  if (!self.crossOriginIsolated) {
+    $('panel-docking').querySelector('.columnas').insertAdjacentHTML('beforebegin',
+      '<div class="aviso">El docking necesita las cabeceras COOP y COEP, que habilitan <code>SharedArrayBuffer</code>. ' +
+      'Esta página se está sirviendo sin ellas, así que Vina no puede arrancar. Levantala con <code>servir.bat</code> ' +
+      '(o <code>python servidor.py</code>) y el docking queda disponible. Los descriptores funcionan igual.</div>');
+    $('dockear').textContent = 'No disponible sin las cabeceras';
+    return;
+  }
+  $('panel-docking').querySelector('.columnas').insertAdjacentHTML('beforebegin',
+    '<div class="aviso"><strong>En construcción.</strong> Vina ya corre en el navegador y la caja de abajo ' +
+    'es la real, pero falta la conversión del ligando a PDBQT. OpenBabel compilado a WebAssembly ejecuta su ' +
+    '<code>main()</code> al iniciar y bloquea el hilo principal, así que tiene que ir aislado en un iframe, ' +
+    'como hace Webina. Eso además mantiene separada su licencia GPL del resto.</div>');
+  $('dockear').textContent = 'Falta la conversión a PDBQT';
+  return;
+}
+
+$('receptor').addEventListener('change', async () => {
+  const v = $('receptor').value;
+  if (!v) { $('receptorArchivo').click(); return; }
+  receptorTxt = await (await fetch(v)).text();
+  $('receptorEstado').textContent = `Receptor cargado: ${receptorTxt.split('\n').length} líneas.`;
+});
+$('receptorArchivo').addEventListener('change', async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  receptorTxt = await f.text();
+  $('receptorEstado').textContent = `Receptor "${f.name}": ${receptorTxt.split('\n').length} líneas.`;
+});
+
+function ligandoAPDBQT(smiles) {
+  const mol = OCL.Molecule.fromSmiles(smiles);
+  const conf = new OCL.ConformerGenerator(Date.now() & 0xffff).getOneConformerAsMolecule(mol);
+  if (!conf) throw new Error('no se pudo generar un confórmero del ligando');
+  new OCL.ForceFieldMMFF94(conf, OCL.ForceFieldMMFF94.MMFF94).minimise();
+  const conv = new OB.ObConversion();
+  conv.setInFormat('', 'mol');
+  const obmol = new OB.OBMol();
+  conv.readString(obmol, conf.toMolfile());
+  obmol.AddHydrogensWithParam(false, true, 7.4);   // hidrógenos a pH fisiológico
+  conv.setOutFormat('', 'pdbqt');                  // con árbol de torsiones: ligando flexible
+  const txt = conv.writeString(obmol, false);
+  obmol.delete();
+  return txt;
+}
+
+$('dockear').addEventListener('click', async () => {
+  const smiles = $('smiles').value.trim();
+  if (!smiles) { dockEstado('Falta el SMILES, en la pestaña de descriptores.', true); return; }
+  if (!receptorTxt) { dockEstado('Falta el receptor.', true); return; }
+  $('dockear').disabled = true;
+  const t0 = performance.now();
+  try {
+    dockEstado('Preparando el ligando…');
+    const ligando = await new Promise((ok, mal) => setTimeout(() => {
+      try { ok(ligandoAPDBQT(smiles)); } catch (e) { mal(e); } }, 10));
+
+    dockEstado('Dockeando. Puede tardar uno o dos minutos…');
+    const params = {
+      center_x: +$('cx').value, center_y: +$('cy').value, center_z: +$('cz').value,
+      size_x: +$('sx').value, size_y: +$('sy').value, size_z: +$('sz').value,
+      exhaustiveness: +$('ex').value, energy_range: 3, cpu: +$('cpu').value,
+    };
+    const { pose, out } = await new Promise((resolve) => {
+      let stdout = '', iniciado = null;
+      const mod = new WEBINA({
+        noInitialRun: true,
+        locateFile: (p) => 'lib/Webina/' + p,
+        preRun: [function (This) {
+          This.FS.writeFile('/receptor.pdbqt', receptorTxt);
+          This.FS.writeFile('/ligand.pdbqt', ligando);
+          iniciado = This;
+        }],
+        print: (t) => { stdout += t + '\n'; },
+        printErr: () => {},
+        onExit: () => {
+          let p = '';
+          try { p = iniciado.FS.readFile('/ligand_out.pdbqt', { encoding: 'utf8' }); } catch {}
+          resolve({ pose: p, out: stdout });
+        },
+      });
+      Promise.resolve(mod).then((m) => (m && m.ready) ? m.ready : m).then((m) => {
+        const args = [];
+        for (const [k, v] of Object.entries(params)) { args.push('--' + k, String(v)); }
+        args.push('--receptor', '/receptor.pdbqt', '--ligand', '/ligand.pdbqt', '--out', '/ligand_out.pdbqt');
+        m.callMain(args);
+      });
+    });
+
+    ultimaPose = pose;
+    const filas = pose.split('\n').filter((l) => l.includes('VINA RESULT'))
+      .map((l) => l.trim().split(/\s+/).slice(3).map(Number));
+    if (!filas.length) { dockEstado('Vina no devolvió poses. Revisá la salida.', true); }
+    else {
+      $('poses').innerHTML = '<div class="desborde"><table><thead><tr><th>Pose</th>' +
+        '<th>ΔG<sub>dock</sub> (kcal/mol)</th><th>RMSD inf.</th><th>RMSD sup.</th></tr></thead><tbody>' +
+        filas.map((f, i) => `<tr><td>${i + 1}</td><td>${f[0].toFixed(3)}</td><td>${f[1].toFixed(3)}</td><td>${f[2].toFixed(3)}</td></tr>`).join('') +
+        '</tbody></table></div>';
+      dockEstado(`Listo en ${((performance.now() - t0) / 1000).toFixed(0)} s. Mejor pose: ${filas[0][0].toFixed(3)} kcal/mol.`);
+    }
+    $('vinaSalida').textContent = out.trim() || '—';
+  } catch (e) {
+    dockEstado('Error: ' + (e.message || e), true);
+  } finally {
+    $('dockear').disabled = false;
+  }
+});
+
+$('bajarPose').addEventListener('click', () => {
+  if (!ultimaPose) { dockEstado('Todavía no hay poses.', true); return; }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([ultimaPose], { type: 'text/plain' }));
+  a.download = 'poses.pdbqt'; a.click(); URL.revokeObjectURL(a.href);
+});
+
 pintarSerie();
+
 </script>
 </body>
 </html>
