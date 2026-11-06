@@ -48,6 +48,21 @@ La vista cambia sola a "Geometría 3D" y **la relajación se dibuja paso a paso*
 paso, la energía acumulada y la fuerza máxima. El encuadre se fija en el primer cuadro y se vuelve
 a ajustar al final, para que la molécula no salte en cada iteración.
 
+Los dos parámetros del optimizador son editables: **pasos máximos** y **umbral de fuerza**
+(|F|max en Ha/Bohr). Bajar el umbral da una geometría más relajada a cambio de más iteraciones.
+
+## Taller de geometría
+
+Debajo del visor 3D hay una barra para manipular la estructura y ver cómo responde:
+
+- **Clic en un átomo** lo selecciona; los botones X±, Y± y Z± lo desplazan la distancia indicada.
+- **Distorsionar** corre todos los átomos esa distancia en direcciones al azar.
+- **Reoptimizar** relaja la geometría actual con GFN2, animando cada paso.
+
+La distorsión está acotada: si una combinación al azar comprime un enlace más de un 12 % o deja
+dos átomos a menos de 0,95 Å, se descarta y se reintenta con menos amplitud. Por debajo de eso el
+campo autoconsistente de GFN2 no converge, y el error que da es poco informativo.
+
 ## Sobre cuánto se mueven los átomos
 
 Poco, y es lo esperable. Una optimización es una bajada al mínimo local más cercano: relaja
