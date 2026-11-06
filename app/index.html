@@ -24,6 +24,7 @@
   --linea:#2c3634; --acento:#54bdb3; --acento-suave:#1d302e; --alerta:#e0896a;
   color-scheme:dark;}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 body{margin:0;background:var(--fondo);color:var(--tinta);font:16px/1.55 var(--sans)}
 .envoltorio{max-width:1120px;margin:0 auto;padding-inline:max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-right,0px));padding-block:32px 56px}
 h1{font-size:1.5rem;font-weight:600;margin:0 0 4px;text-wrap:balance;letter-spacing:-.01em}
@@ -377,13 +378,22 @@ async function prepararDocking() {
     $('dockear').textContent = 'No disponible sin las cabeceras';
     return;
   }
-  $('panel-docking').querySelector('.columnas').insertAdjacentHTML('beforebegin',
-    '<div class="aviso"><strong>En construcción.</strong> Vina ya corre en el navegador y la caja de abajo ' +
-    'es la real, pero falta la conversión del ligando a PDBQT. OpenBabel compilado a WebAssembly ejecuta su ' +
-    '<code>main()</code> al iniciar y bloquea el hilo principal, así que tiene que ir aislado en un iframe, ' +
-    'como hace Webina. Eso además mantiene separada su licencia GPL del resto.</div>');
-  $('dockear').textContent = 'Falta la conversión a PDBQT';
-  return;
+  dockEstado('Cargando OpenBabel…');
+  await cargarScript('lib/openbabel/openbabel.js');
+  // Emscripten viejo: no expone .ready, avisa por onRuntimeInitialized
+  const mod = window.OpenBabelModule({
+    locateFile: (f) => 'lib/openbabel/' + f,
+    print: () => {}, printErr: () => {},
+  });
+  await new Promise((ok) => { mod.calledRun ? ok() : (mod.onRuntimeInitialized = ok); });
+  OB = mod;
+  dockEstado('Cargando Vina…');
+  WEBINA = (await import('./lib/Webina/vina.1.0.5.js')).default;
+  receptorTxt = await (await fetch($('receptor').value)).text();
+  $('receptorEstado').textContent = `Receptor cargado: ${receptorTxt.split('\n').length} líneas.`;
+  $('dockear').disabled = false;
+  $('dockear').textContent = 'Dockear';
+  dockEstado('Listo.');
 }
 
 $('receptor').addEventListener('change', async () => {
@@ -403,14 +413,14 @@ function ligandoAPDBQT(smiles) {
   const conf = new OCL.ConformerGenerator(Date.now() & 0xffff).getOneConformerAsMolecule(mol);
   if (!conf) throw new Error('no se pudo generar un confórmero del ligando');
   new OCL.ForceFieldMMFF94(conf, OCL.ForceFieldMMFF94.MMFF94).minimise();
-  const conv = new OB.ObConversion();
+  const conv = new OB.ObConversionWrapper();
   conv.setInFormat('', 'mol');
   const obmol = new OB.OBMol();
   conv.readString(obmol, conf.toMolfile());
   obmol.AddHydrogensWithParam(false, true, 7.4);   // hidrógenos a pH fisiológico
   conv.setOutFormat('', 'pdbqt');                  // con árbol de torsiones: ligando flexible
   const txt = conv.writeString(obmol, false);
-  obmol.delete();
+  obmol.delete(); conv.delete();
   return txt;
 }
 
