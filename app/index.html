@@ -532,8 +532,7 @@ a:focus-visible{outline:2px solid var(--celeste);outline-offset:2px}
     </div>
   </div>
 
-  <p class="nota">GFN2-xTB es un método semiempírico de <em>tight binding</em>, no DFT. El momento dipolar se reconstruye a partir de los multipolos atómicos CAMM. Los valores dependen del confórmero: si volvés a calcular la misma molécula, el dipolo puede moverse y el HOMO casi no. Componentes: <code>openchemlib</code>, <code>@rdkit/rdkit</code> y <code>@peterspackman/occjs</code>.</p>
-  <p class="nota">Más química y datos en Instagram: <a href="https://www.instagram.com/la.data.atada/" target="_blank" rel="noopener noreferrer">@la.data.atada</a>.</p>
+  <p class="nota">Piezas libres: openchemlib, RDKit, occjs (GFN2-xTB), Webina (AutoDock Vina) y 3Dmol.js. Qué calcula cada una y hasta dónde llega el método, en <a href="#" id="irAyuda">Ayuda</a>. · Instagram: <a href="https://www.instagram.com/la.data.atada/" target="_blank" rel="noopener noreferrer">@la.data.atada</a></p>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@rdkit/rdkit@2026.9.2/dist/RDKit_minimal.js" crossorigin="anonymous"></script>
@@ -1647,6 +1646,11 @@ $('verPortada').addEventListener('click', () => {
 for (const id of ['calcular', 'alDibujo', 'delDibujo']) $(id).addEventListener('click', cerrarPortada);
 $('ejemplos').addEventListener('click', cerrarPortada);
 
+$('irAyuda').addEventListener('click', (e) => {
+  e.preventDefault();
+  const b = [...$('pestanas').children].find((x) => x.dataset.p === 'ayuda');
+  if (b) { b.click(); b.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
+});
 $('copiarEnlace').addEventListener('click', async (e) => {
   try {
     await navigator.clipboard.writeText($('enlace').textContent.trim());
