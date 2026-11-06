@@ -69,6 +69,9 @@ th{font:600 .7rem var(--sans);text-transform:uppercase;letter-spacing:.06em;colo
 .lienzo openchemlib-editor{display:block;width:100%;height:100%}
 #panel-descriptores{display:flex;flex-direction:column;gap:20px}
 .lienzo-grande{padding:12px}
+.interruptor{display:flex;align-items:center;gap:7px;font:400 .84rem var(--sans);color:var(--tinta);text-transform:none;letter-spacing:0;margin:0}
+.interruptor input{accent-color:var(--acento);width:15px;height:15px}
+.aclara{color:var(--tenue);font-size:.8rem}
 .vistas{display:flex;gap:4px;align-items:center;margin-bottom:10px}
 .vistas button{font:500 .82rem var(--sans);padding:6px 13px;border:1px solid var(--linea);border-radius:999px;background:transparent;color:var(--tenue);cursor:pointer}
 .vistas button.activa{background:var(--acento-suave);border-color:var(--acento);color:var(--acento)}
@@ -125,6 +128,7 @@ select{width:100%;font:14px var(--sans);padding:9px 10px;border:1px solid var(--
           <button id="delDibujo">Tomar del dibujo</button>
           <button id="alDibujo">Llevar al dibujo</button>
         </div>
+        <label class="interruptor"><input type="checkbox" id="optGfn2"> Optimizar la geometría con GFN2 <span class="aclara">(más lento)</span></label>
         <button class="primario" id="calcular" disabled>Cargando librerías…</button>
         <div class="estado" id="estado"></div>
       </div>
@@ -239,9 +243,72 @@ $('ejemplos').addEventListener('click', (e) => {
   }
 })();
 
+
+// ──────────────── optimización de geometría con GFN2 (L-BFGS) ────────────────
+// El módulo solo trae optimizador para Hartree-Fock y DFT, así que el bucle va acá.
+// Posiciones en Bohr y gradientes en Ha/Bohr, que es lo que devuelve la librería.
+const vres = (a,b) => a.map((x,i)=>x-b[i]);
+const vesc = (a,s) => a.map(x=>x*s);
+const vsum = (a,b,s=1) => a.map((x,i)=>x+s*b[i]);
+const vpun = (a,b) => a.reduce((t,x,i)=>t+x*b[i],0);
+const vmax = (a) => a.reduce((m,x)=>Math.max(m,Math.abs(x)),0);
+const leerMat = (m,n) => { const v=[]; for(let i=0;i<n;i++) for(let k=0;k<3;k++) v.push(m.get(k,i)); return v; };
+const armarMat = (v,n) => { const p=OCC.Mat3N.create(n); for(let i=0;i<n;i++) for(let k=0;k<3;k++) p.set(k,i,v[i*3+k]); return p; };
+
+async function optimizarGFN2(calc, n, avisar) {
+  const MAX = 150, TOL_F = 1e-3, TOL_E = 1e-6, MEM = 8;
+  const evaluar = (xx) => {
+    calc.updateStructure(armarMat(xx, n));
+    const r = calc.singlePoint();
+    return { E: r.totalEnergy, g: leerMat(calc.gradient(), n) };
+  };
+  let x = leerMat(calc.positions(), n);
+  let { E, g } = evaluar(x);
+  const E0 = E;
+  const S = [], Y = [];
+  let pasos = 0;
+
+  for (pasos = 1; pasos <= MAX; pasos++) {
+    if (vmax(g) < TOL_F) break;
+    avisar(pasos, E - E0, vmax(g));
+    await new Promise((r) => setTimeout(r, 0));   // devolver el hilo para que la página respire
+
+    let q = g.slice(); const alpha = [];
+    for (let i = S.length - 1; i >= 0; i--) {
+      alpha[i] = vpun(S[i], q) / vpun(Y[i], S[i]);
+      q = vsum(q, Y[i], -alpha[i]);
+    }
+    const gamma = S.length ? vpun(S[S.length-1], Y[Y.length-1]) / vpun(Y[Y.length-1], Y[Y.length-1]) : 1 / vmax(g);
+    let z = vesc(q, gamma);
+    for (let i = 0; i < S.length; i++) {
+      const beta = vpun(Y[i], z) / vpun(Y[i], S[i]);
+      z = vsum(z, S[i], alpha[i] - beta);
+    }
+    let d = vesc(z, -1);
+    if (vpun(d, g) > 0) d = vesc(g, -1);           // si no baja, ir por el gradiente
+
+    let paso = 1, nuevo = null;
+    const pend = vpun(d, g);
+    for (let k = 0; k < 12; k++) {                  // búsqueda de línea de Armijo
+      const r = evaluar(vsum(x, d, paso));
+      if (r.E <= E + 1e-4 * paso * pend) { nuevo = { x: vsum(x, d, paso), ...r }; break; }
+      paso *= 0.5;
+    }
+    if (!nuevo) break;
+
+    const sv = vres(nuevo.x, x), yv = vres(nuevo.g, g), dE = Math.abs(nuevo.E - E);
+    x = nuevo.x; E = nuevo.E; g = nuevo.g;
+    if (vpun(sv, yv) > 1e-12) { S.push(sv); Y.push(yv); if (S.length > MEM) { S.shift(); Y.shift(); } }
+    if (dE < TOL_E && vmax(g) < TOL_F * 5) break;
+  }
+  calc.updateStructure(armarMat(x, n));
+  calc.singlePoint();
+  return { pasos, dE: (E - E0) * 627.509, fuerzaMax: vmax(g), convergio: vmax(g) < TOL_F, x };
+}
+
 const vec = (v) => { const n = v.size(), a = []; for (let i = 0; i < n; i++) a.push(v.get(i)); return a; };
 
-function calcular(smiles) {
+async function calcular(smiles) {
   const t = {}, r = { smiles };
   let t0 = performance.now();
 
@@ -252,7 +319,7 @@ function calcular(smiles) {
   ff.minimise();
   r.atomos = conf.getAllAtoms();
   r.mmff94 = ff.getTotalEnergy();
-  ultimaGeometria = { molfile: conf.toMolfile(), nombre: smiles, E: r.mmff94, n: r.atomos };
+  ultimaGeometria = { molfile: conf.toMolfile(), nombre: smiles, E: r.mmff94, n: r.atomos, nivel: 'MMFF94' };
   t.geometria = performance.now() - t0;
 
   t0 = performance.now();
@@ -264,7 +331,24 @@ function calcular(smiles) {
   const pm = OCC.Mat3N.create(Z.length);
   pos.forEach((p, i) => { pm.set(0, i, p[0]); pm.set(1, i, p[1]); pm.set(2, i, p[2]); });
   const molecula = new OCC.Molecule(OCC.IVec.fromArray(Z), pm);
-  const res = OCC.XtbCalculator.fromMolecule(molecula, OCC.XtbMethod.GFN2).singlePoint();
+  const calc = OCC.XtbCalculator.fromMolecule(molecula, OCC.XtbMethod.GFN2);
+  let res = calc.singlePoint();
+  t.gfn2 = performance.now() - t0;
+
+  if ($('optGfn2').checked) {
+    const t1 = performance.now();
+    const o = await optimizarGFN2(calc, Z.length, (p, dE, f) =>
+      estado(`Optimizando con GFN2: paso ${p}, ${(dE * 627.509).toFixed(1)} kcal/mol, |F|max ${f.toExponential(1)}`));
+    res = calc.lastResult();
+    r.opt = o;
+    t.optimizacion = performance.now() - t1;
+    const P = calc.positions();                    // geometría optimizada, de Bohr a ángstrom
+    const B = 0.529177210903;
+    const lineas = [String(Z.length), 'optimizado con GFN2'];
+    for (let i = 0; i < Z.length; i++)
+      lineas.push(`${conf.getAtomLabel(i)} ${(P.get(0,i)*B).toFixed(6)} ${(P.get(1,i)*B).toFixed(6)} ${(P.get(2,i)*B).toFixed(6)}`);
+    ultimaGeometria = { xyz: lineas.join('\n'), nombre: smiles, E: r.mmff94, n: r.atomos, nivel: 'GFN2' };
+  }
 
   const en = vec(res.orbitalEnergies), oc = vec(res.orbitalOccupations);
   const nocc = oc.filter((o) => o > 0.5).length;
@@ -272,13 +356,12 @@ function calcular(smiles) {
   r.lumo = en[nocc] * HA2EV;
   r.gap = r.lumo - r.homo;
 
-  const q = vec(res.atomicCharges), ad = res.atomicDipoles, P = molecula.positions();
+  const q = vec(res.atomicCharges), ad = res.atomicDipoles, P = calc.positions();
   const mu = [0, 0, 0];
   for (let i = 0; i < Z.length; i++)
     for (let k = 0; k < 3; k++) mu[k] += q[i] * P.get(k, i) + ad.get(k, i);
   r.dipolo = Math.hypot(...mu) * AU2D;
   r.convergio = res.converged;
-  t.gfn2 = performance.now() - t0;
 
   t0 = performance.now();
   const m2 = RDKit.get_mol(smiles);
@@ -302,7 +385,9 @@ function pintar(r, t) {
   ).join('') + '</div>';
   $('tiempos').innerHTML = [
     ['Geometría 3D + MMFF94', t.geometria], ['GFN2-xTB', t.gfn2], ['Descriptores RDKit', t.rdkit],
-  ].map(([n, ms]) => `<div class="paso"><span>${n}</span><span>${(ms / 1000).toFixed(2)} s</span></div>`).join('')
+  ].concat(t.optimizacion ? [['Optimización GFN2', t.optimizacion]] : [])
+    .map(([n, ms]) => `<div class="paso"><span>${n}</span><span>${(ms / 1000).toFixed(2)} s</span></div>`).join('')
+    + (r.opt ? `<div class="paso"><span>Pasos · ΔE · |F|max</span><span>${r.opt.pasos} · ${r.opt.dE.toFixed(1)} kcal/mol · ${r.opt.fuerzaMax.toExponential(1)}${r.opt.convergio ? '' : ' (no convergió)'}</span></div>` : '')
     + `<div class="paso"><span>Energía MMFF94</span><span>${r.mmff94.toFixed(2)} kcal/mol</span></div>`
     + `<div class="paso"><span>Átomos · SCF</span><span>${r.atomos} · ${r.convergio ? 'convergió' : 'NO convergió'}</span></div>`;
 }
@@ -330,9 +415,9 @@ $('calcular').addEventListener('click', () => {
   if (!s) { estado('Escribí un SMILES.', true); return; }
   $('calcular').disabled = true;
   estado('Calculando…');
-  setTimeout(() => {
+  setTimeout(async () => {
     try {
-      const { r, t } = calcular(s);
+      const { r, t } = await calcular(s);
       pintar(r, t);
       mostrarGeometria();
       serie.push(r); pintarSerie();
@@ -367,11 +452,13 @@ function mostrarGeometria() {
     visor = $3Dmol.createViewer($('visor3d'), { backgroundColor: 'white' });
   }
   visor.clear();
-  visor.addModel(ultimaGeometria.molfile, 'mol');
+  visor.addModel(ultimaGeometria.xyz ?? ultimaGeometria.molfile, ultimaGeometria.xyz ? 'xyz' : 'mol');
   visor.setStyle({}, { stick: { radius: 0.13 }, sphere: { scale: 0.22 } });
   visor.zoomTo();
   visor.render();
-  $('pie3d').textContent = `${ultimaGeometria.n} átomos · MMFF94 = ${ultimaGeometria.E.toFixed(2)} kcal/mol`;
+  $('pie3d').textContent = ultimaGeometria.nivel === 'GFN2'
+    ? `${ultimaGeometria.n} átomos · geometría optimizada con GFN2`
+    : `${ultimaGeometria.n} átomos · geometría MMFF94 = ${ultimaGeometria.E.toFixed(2)} kcal/mol`;
 }
 
 document.querySelector('.vistas').addEventListener('click', (e) => {

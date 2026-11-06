@@ -31,8 +31,19 @@ sentidos, y un visor de la geometría 3D optimizada (3Dmol.js), que se puede rot
 
 El dibujo es en 2D, como en cualquier editor químico. La estructura tridimensional no se dibuja:
 se genera a partir del dibujo con un generador de confórmeros y se minimiza con el campo de
-fuerzas MMFF94. La pestaña "Geometría 3D" muestra el resultado de esa minimización, con su
-energía. Sobre esa geometría corre después el cálculo GFN2.
+fuerzas MMFF94. La pestaña "Geometría 3D" muestra el resultado, con su energía.
+
+## Optimización con GFN2
+
+Con la casilla "Optimizar la geometría con GFN2" el cálculo no se queda en MMFF94: hace una
+optimización completa a nivel GFN2-xTB y recién después calcula los descriptores electrónicos.
+Cuesta entre quince y veinte segundos por molécula, contra menos de tres sin ella, así que viene
+apagada.
+
+El optimizador es un L-BFGS escrito en la página, con búsqueda de línea de Armijo, porque el
+módulo de optimización que trae la librería solo envuelve Hartree-Fock y DFT. Converge cuando la
+mayor componente de la fuerza baja de 10⁻³ Ha/Bohr. Informa los pasos, el cambio de energía y la
+fuerza máxima alcanzada.
 
 ## Docking
 
