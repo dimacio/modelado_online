@@ -161,6 +161,42 @@ th{font:700 .56rem var(--pix);text-transform:uppercase;color:var(--tenue);backgr
 .aviso{background:#ddeef7;border:2px solid var(--tinta);
   padding:12px 14px;font-size:.84rem;margin-bottom:16px;color:var(--tinta)}
 .aviso code{background:var(--panel);font:.95em var(--mono);padding:1px 4px;border:1px solid var(--suave)}
+/* portada: ocupa el lienzo mientras no haya nada dibujado */
+.portada{position:absolute;inset:0;background:var(--panel);overflow:auto;
+  display:grid;align-content:start;justify-items:start;padding:clamp(20px,4vw,40px)}
+.portada-caja{max-width:62ch}
+.portada h3{font:700 .92rem/1.4 var(--pix);text-transform:uppercase;letter-spacing:.02em;margin:0 0 12px}
+.portada .lead{margin:0 0 18px;font-size:.88rem;line-height:1.65;color:var(--tinta)}
+.portada .pasos{margin:0 0 20px;padding-left:20px;font-size:.84rem;line-height:1.6}
+.portada .pasos li{margin-bottom:9px}
+.portada .pasos b{font-weight:700}
+.portada-botones{display:flex;gap:8px;flex-wrap:wrap;align-items:stretch}
+.portada-botones .primario{display:inline-block;width:auto;padding:9px 18px;font-size:.68rem}
+.portada-botones button:not(.primario){font:700 .62rem var(--pix);text-transform:uppercase;padding:9px 14px;
+  cursor:pointer;color:var(--tinta);background:var(--panel);border:2px solid var(--tinta)}
+.portada-botones button:not(.primario):hover{background:var(--papel)}
+.portada-pie{margin:18px 0 0;font-size:.78rem;color:var(--tenue)}
+
+/* ayuda */
+#panel-ayuda{border-top:2px solid var(--tinta);padding-top:16px}
+.ayuda{font:.84rem/1.65 var(--sans);color:var(--tinta)}
+.ayuda p{margin:0 0 12px}
+.ayuda p:last-child{margin-bottom:0}
+.ayuda h4{font:700 .62rem var(--pix);text-transform:uppercase;letter-spacing:.03em;color:var(--celeste3);
+  margin:18px 0 8px}
+.ayuda h4:first-child{margin-top:0}
+.ayuda ol{margin:0 0 4px;padding-left:20px}
+.ayuda ol li{margin-bottom:8px}
+.ayuda dl{margin:0}
+.ayuda dt{font:700 .62rem var(--pix);text-transform:uppercase;letter-spacing:.02em;color:var(--tenue);
+  margin-top:12px}
+.ayuda dt:first-child{margin-top:0}
+.ayuda dd{margin:3px 0 0}
+.ayuda dl + p{margin-top:15px}
+.ayuda code{font:.95em var(--mono);background:var(--papel);padding:1px 5px;border:1px solid var(--suave)}
+.ayuda button{font:700 .62rem var(--pix);text-transform:uppercase;padding:8px 13px;cursor:pointer;
+  color:var(--tinta);background:var(--panel);border:2px solid var(--tinta)}
+.ayuda button:hover{background:var(--papel)}
 </style>
 </head>
 <body>
@@ -172,6 +208,7 @@ th{font:700 .56rem var(--pix);text-transform:uppercase;color:var(--tenue);backgr
     <button data-p="descriptores" class="activa">Descriptores</button>
     <button data-p="docking">Docking</button>
     <button data-p="complejo">Complejo</button>
+    <button data-p="ayuda">Ayuda</button>
   </nav>
 
   <div id="panel-descriptores">
@@ -181,7 +218,30 @@ th{font:700 .56rem var(--pix);text-transform:uppercase;color:var(--tenue);backgr
         <button data-v="3d">Geometría 3D</button>
         <span class="pie3d" id="pie3d"></span>
       </div>
-      <div class="lienzo" id="caja2d"><openchemlib-editor id="editor"></openchemlib-editor></div>
+      <div class="lienzo" id="caja2d"><openchemlib-editor id="editor"></openchemlib-editor>
+        <div class="portada" id="portada">
+          <div class="portada-caja">
+            <h3>Modelado molecular, entero en el navegador</h3>
+            <p class="lead">Beta hace lo que en los trabajos prácticos hacíamos con HyperChem y MGLTools: geometría,
+            descriptores y docking. No hay nada que instalar, no hace falta licencia y corre igual en Windows, Mac,
+            Linux o en una máquina administrada. Lo que dibujás tampoco se sube a ningún lado: todo el cálculo
+            ocurre en esta pestaña.</p>
+            <ol class="pasos">
+              <li><b>Dibujá</b> la estructura acá mismo, o pegá un SMILES en el campo de abajo.</li>
+              <li><b>Calculá</b> y salen la geometría 3D y nueve descriptores. En <em>Geometría 3D</em> podés
+                  arrastrar un átomo con el mouse y apretar <em>Minimizar</em> para verla reacomodarse.</li>
+              <li><b>Dockeá</b> contra un receptor en la pestaña <em>Docking</em>, con AutoDock Vina.</li>
+              <li><b>Mirá el complejo</b>: la pose dentro de la proteína y sus interacciones, medidas y listadas.</li>
+            </ol>
+            <div class="portada-botones">
+              <button id="portadaEmpezar" class="primario azul">Empezar a dibujar</button>
+              <button id="portadaEjemplo">Probar con un ejemplo</button>
+              <button id="portadaAyuda">Cómo se usa</button>
+            </div>
+            <p class="portada-pie">Versión en prueba. Si algo no anda o falta, contalo: de eso se trata el beta test.</p>
+          </div>
+        </div>
+      </div>
       <div class="lienzo" id="caja3d" hidden><div id="visor3d"></div>
         <p class="vacio sinGeo" id="sinGeo">Todavía no hay geometría. Apretá Calcular y aparece acá.</p>
       </div>
@@ -322,6 +382,126 @@ th{font:700 .56rem var(--pix);text-transform:uppercase;color:var(--tenue);backgr
         <label for="poseArchivo" style="margin-top:4px">Cargar poses de otro lado</label>
         <input type="file" id="poseArchivo" accept=".pdbqt">
         <div class="estado" id="complejoEstado"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="panel-ayuda" hidden>
+    <div class="columnas-res">
+      <div class="pila">
+        <div class="tarjeta">
+          <h2>Qué es esto</h2>
+          <div class="ayuda">
+            <p>Beta reemplaza la cadena de software propietario de los trabajos prácticos de QSAR y docking por
+            piezas libres que corren dentro del navegador. No hay servidor de cálculo: la molécula que dibujás,
+            la geometría y las poses se calculan en tu computadora y no salen de ahí.</p>
+            <p>Eso tiene una consecuencia práctica: la velocidad depende de tu máquina, no de la red. Una notebook
+            modesta hace los descriptores en pocos segundos y un docking en uno o dos minutos.</p>
+            <p><button id="verPortada">Volver a ver la portada</button></p>
+          </div>
+        </div>
+
+        <div class="tarjeta">
+          <h2>Paso a paso</h2>
+          <div class="ayuda">
+            <h4>Descriptores</h4>
+            <ol>
+              <li>Dibujá la estructura en el lienzo, o escribí el SMILES y apretá <em>Llevar al dibujo</em>.
+                  <em>Tomar del dibujo</em> hace lo inverso.</li>
+              <li><em>Calcular</em> genera un confórmero 3D, lo relaja con MMFF94, corre GFN2-xTB y saca los
+                  descriptores. Cada cálculo se agrega a la tabla <em>Serie</em>, que se baja como CSV para
+                  armar el QSAR.</li>
+              <li>En <em>Geometría 3D</em>: arrastrá con el mouse para rotar, rueda para acercar, y arrastrá
+                  un átomo para moverlo. <em>Distorsionar</em> corre todos los átomos al azar la cantidad de
+                  ångström que pongas al lado.</li>
+              <li><em>Minimizar</em> relaja la geometría con GFN2 y actualiza dipolo, HOMO, LUMO y gap. Los
+                  descriptores 2D (masa, clogP, refractividad, TPSA, superficie) no cambian, porque no dependen
+                  de la geometría.</li>
+            </ol>
+            <h4>Docking</h4>
+            <ol>
+              <li>El ligando sale del SMILES de la primera pestaña: se le agregan hidrógenos a pH 7,4 y se
+                  convierte a PDBQT con su árbol de torsiones.</li>
+              <li>Elegí el receptor (viene uno de ejemplo) o subí un <code>.pdbqt</code> propio.</li>
+              <li>La <em>caja</em> define dónde busca Vina: centro y tamaño en ångström. Si no sabés el centro,
+                  usá el centroide del ligando cristalográfico.</li>
+              <li><em>Exhaustiveness</em> es cuánto insiste la búsqueda: 8 es el valor por defecto de Vina,
+                  subirlo da resultados más reproducibles y tarda proporcionalmente más. <em>Núcleos</em>
+                  conviene dejarlo bajo: con más hilos que núcleos reales la corrida se vuelve mucho más lenta.</li>
+            </ol>
+            <h4>Complejo</h4>
+            <ol>
+              <li>Toma las poses del último docking, o un <code>.pdbqt</code> de poses que cargues.</li>
+              <li><em>Cinta</em> muestra u oculta la proteína, <em>Superficie</em> dibuja la del bolsillo,
+                  <em>Distancias</em> prende las etiquetas y <em>Encuadrar</em> vuelve a centrar en el ligando.</li>
+              <li>La tabla de interacciones se baja como CSV.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      <div class="pila">
+        <div class="tarjeta">
+          <h2>Qué significa cada número</h2>
+          <div class="ayuda">
+            <dl>
+              <dt>Masa</dt><dd>Peso molecular promedio. RDKit.</dd>
+              <dt>clogP</dt><dd>Logaritmo del coeficiente de reparto octanol/agua, estimado por el método de
+                contribución de fragmentos de Wildman y Crippen. RDKit.</dd>
+              <dt>Refractividad</dt><dd>Refractividad molar por el mismo método de Wildman y Crippen; se usa como
+                descriptor estérico y de polarizabilidad. RDKit.</dd>
+              <dt>TPSA</dt><dd>Superficie polar topológica de Ertl, en Å². RDKit.</dd>
+              <dt>Superficie</dt><dd>Superficie accesible al solvente aproximada por el método de Labute, en Å².
+                RDKit.</dd>
+              <dt>Dipolo</dt><dd>Momento dipolar en debye, reconstruido a partir de los multipolos atómicos
+                acumulados (CAMM) que devuelve GFN2-xTB. Depende de la geometría.</dd>
+              <dt>HOMO, LUMO, Gap</dt><dd>Energías de los orbitales frontera y su diferencia, en eV, de GFN2-xTB.
+                Dependen de la geometría.</dd>
+            </dl>
+            <p>Abajo del cuadro aparecen los tiempos de cada etapa, la energía MMFF94 del confórmero y si el SCF
+            convergió. Si dice que no convergió, el resto de los números electrónicos no son confiables.</p>
+          </div>
+        </div>
+
+        <div class="tarjeta">
+          <h2>Hasta dónde llega</h2>
+          <div class="ayuda">
+            <p><b>GFN2-xTB no es DFT.</b> Es un método semiempírico de <em>tight binding</em>. Sirve muy bien para
+            comparar moléculas de una misma serie, que es lo que pide un QSAR, pero sus energías absolutas no son
+            comparables con las de un cálculo <em>ab initio</em>.</p>
+            <p><b>El confórmero es uno solo.</b> Se genera uno, se relaja y con ese se calcula. El dipolo en
+            particular depende bastante del confórmero; el HOMO casi nada. Si la molécula es flexible, tenelo
+            presente al interpretar.</p>
+            <p><b>El ΔG de Vina es una función de scoring empírica</b>, no una energía libre medida. Sirve para
+            ordenar poses y comparar ligandos parecidos, no para predecir una constante de afinidad.</p>
+            <p><b>Las interacciones de la pestaña Complejo son geometría.</b> Se miden sobre la pose que salió;
+            Vina no las usa de esa forma para puntuar. Los umbrales están escritos en esa misma pestaña.</p>
+          </div>
+        </div>
+
+        <div class="tarjeta">
+          <h2>Si algo no anda</h2>
+          <div class="ayuda">
+            <dl>
+              <dt>El botón de docking dice "No disponible sin las cabeceras"</dt>
+              <dd>Vina necesita <code>SharedArrayBuffer</code>, que el navegador sólo habilita con ciertas cabeceras.
+                En la versión publicada las pone un <em>service worker</em>; si tu navegador los bloquea (ventana
+                privada de Firefox, algunas políticas corporativas o extensiones de privacidad) el docking no
+                aparece. Probá en una ventana normal, o levantalo en tu máquina con <code>servir.bat</code>.
+                Los descriptores andan igual en todos los casos.</dd>
+              <dt>La primera vez la página se recarga sola</dt>
+              <dd>Es el service worker tomando control. Pasa una sola vez.</dd>
+              <dt>"SCF did not converge" al minimizar</dt>
+              <dd>Suele venir de una distorsión demasiado grande o de un átomo arrastrado encima de otro.
+                Bajá la amplitud o volvé a calcular desde el SMILES.</dd>
+              <dt>El docking tarda muchísimo</dt>
+              <dd>Bajá <em>núcleos</em> a 1 o 2 y <em>exhaustiveness</em> a 4 mientras probás.</dd>
+              <dt>La primera carga baja varios megabytes</dt>
+              <dd>Es el motor de GFN2-xTB compilado a WebAssembly. Queda en la caché del navegador: sólo se baja
+                la primera vez.</dd>
+            </dl>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -834,6 +1014,7 @@ $('pestanas').addEventListener('click', (e) => {
   $('panel-descriptores').hidden = b.dataset.p !== 'descriptores';
   $('panel-docking').hidden = b.dataset.p !== 'docking';
   $('panel-complejo').hidden = b.dataset.p !== 'complejo';
+  $('panel-ayuda').hidden = b.dataset.p !== 'ayuda';
   if (b.dataset.p === 'complejo') mostrarComplejo();
   if (b.dataset.p === 'docking' && !dockingPreparado) {
     dockingPreparado = true;
@@ -1413,6 +1594,31 @@ $('bajarInter').addEventListener('click', () => {
 });
 window.__complejo = () => ({ poses: posesC.length, inter: interActual });
 
+
+// ───────────────── portada: se va en cuanto el usuario arranca ─────────────────
+function cerrarPortada() { const e = $('portada'); if (e) e.hidden = true; }
+function irAPestana(nombre) {
+  const b = [...$('pestanas').children].find((x) => x.dataset.p === nombre);
+  if (b) b.click();
+}
+$('portadaEmpezar').addEventListener('click', cerrarPortada);
+$('portadaAyuda').addEventListener('click', () => { cerrarPortada(); irAPestana('ayuda'); });
+$('portadaEjemplo').addEventListener('click', () => {
+  cerrarPortada();
+  $('smiles').value = EJEMPLOS[0][1];
+  $('alDibujo').click();
+  if (!$('calcular').disabled) $('calcular').click();
+});
+$('verPortada').addEventListener('click', () => {
+  $('portada').hidden = false;
+  irAPestana('descriptores');
+  const v2d = document.querySelector('.vistas button[data-v="2d"]');
+  if (v2d) v2d.click();
+  $('portada').scrollIntoView({ block: 'nearest' });
+});
+// cualquier acción sobre la molécula da por entendida la portada
+for (const id of ['calcular', 'alDibujo', 'delDibujo']) $(id).addEventListener('click', cerrarPortada);
+$('ejemplos').addEventListener('click', cerrarPortada);
 
 pintarSerie();
 
