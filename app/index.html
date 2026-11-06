@@ -26,7 +26,7 @@
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 body{margin:0;background:var(--fondo);color:var(--tinta);font:16px/1.55 var(--sans)}
-.envoltorio{max-width:1120px;margin:0 auto;padding-inline:max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-right,0px));padding-block:32px 56px}
+.envoltorio{max-width:1320px;margin:0 auto;padding-inline:max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-right,0px));padding-block:32px 56px}
 h1{font-size:1.5rem;font-weight:600;margin:0 0 4px;text-wrap:balance;letter-spacing:-.01em}
 .subtitulo{color:var(--tenue);margin:0 0 28px;max-width:62ch;font-size:.95rem}
 .columnas{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:24px;align-items:start}
@@ -66,7 +66,16 @@ th{font:600 .7rem var(--sans);text-transform:uppercase;letter-spacing:.06em;colo
 .pestanas button{font:500 .9rem var(--sans);padding:9px 16px;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--tenue);cursor:pointer;margin-bottom:-1px}
 .pestanas button.activa{color:var(--acento);border-bottom-color:var(--acento)}
 .lienzo{border:1px solid var(--linea);border-radius:8px;overflow:hidden;background:#fff}
-.lienzo openchemlib-editor{display:block;width:100%;height:340px}
+.lienzo openchemlib-editor{display:block;width:100%;height:100%}
+#panel-descriptores{display:flex;flex-direction:column;gap:20px}
+.lienzo-grande{padding:12px}
+.lienzo-grande .lienzo{height:clamp(380px,72vh,760px)}
+.barra{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:start}
+.barra .campo{min-width:0}
+.barra .botonera{display:flex;flex-direction:column;gap:9px;align-items:stretch;min-width:260px}
+.barra .primario{margin-top:0}
+.columnas-res{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:860px){.barra{grid-template-columns:1fr}.barra .botonera{min-width:0}.columnas-res{grid-template-columns:1fr}}
 select{width:100%;font:14px var(--sans);padding:9px 10px;border:1px solid var(--linea);border-radius:7px;background:var(--fondo);color:var(--tinta)}
 .caja{display:grid;grid-template-columns:auto 1fr;gap:7px 10px;align-items:center}
 .caja span{font:.78rem var(--sans);color:var(--tenue)}
@@ -85,26 +94,32 @@ select{width:100%;font:14px var(--sans);padding:9px 10px;border:1px solid var(--
     <button data-p="docking">Docking</button>
   </nav>
 
-  <div class="columnas" id="panel-descriptores">
-    <div class="tarjeta">
-      <label>Estructura</label>
+  <div id="panel-descriptores">
+    <div class="tarjeta lienzo-grande">
       <div class="lienzo"><openchemlib-editor id="editor"></openchemlib-editor></div>
-      <div class="acciones" style="margin-top:10px">
-        <button id="delDibujo">Tomar del dibujo</button>
-        <button id="alDibujo">Llevar al dibujo</button>
-      </div>
-      <label for="smiles" style="margin-top:18px">SMILES</label>
-      <input type="text" id="smiles" value="O=C1CSC(c2c(Cl)cccc2Cl)N1Cc1ccco1" spellcheck="false">
-      <div class="ejemplos" id="ejemplos"></div>
-      <button class="primario" id="calcular" disabled>Cargando librerías…</button>
-      <div class="estado" id="estado"></div>
-      <div id="tiempos" style="margin-top:14px"></div>
     </div>
 
-    <div class="pila">
+    <div class="tarjeta barra">
+      <div class="campo">
+        <label for="smiles">SMILES</label>
+        <input type="text" id="smiles" value="O=C1CSC(c2c(Cl)cccc2Cl)N1Cc1ccco1" spellcheck="false">
+        <div class="ejemplos" id="ejemplos"></div>
+      </div>
+      <div class="botonera">
+        <div class="acciones">
+          <button id="delDibujo">Tomar del dibujo</button>
+          <button id="alDibujo">Llevar al dibujo</button>
+        </div>
+        <button class="primario" id="calcular" disabled>Cargando librerías…</button>
+        <div class="estado" id="estado"></div>
+      </div>
+    </div>
+
+    <div class="columnas-res">
       <div class="tarjeta">
         <h2>Resultado</h2>
-        <div id="resultado"><p class="vacio">Elegí una molécula y calculá.</p></div>
+        <div id="resultado"><p class="vacio">Dibujá o elegí una molécula y calculá.</p></div>
+        <div id="tiempos" style="margin-top:16px"></div>
       </div>
       <div class="tarjeta">
         <h2>Serie</h2>
