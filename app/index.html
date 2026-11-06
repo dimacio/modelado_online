@@ -3,26 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Da COOP/COEP desde un service worker: es lo que habilita SharedArrayBuffer (y por lo tanto Vina)
+     en hostings estáticos que no dejan tocar las cabeceras, como GitHub Pages. MIT, gzuidhof/coi-serviceworker. -->
+<script src="coi-serviceworker.js"></script>
 <title>Descriptores moleculares en el navegador</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
-/* Chrome gris de los noventa: biseles duros, nada redondeado, barras de titulo
-   rojo oscuro y pozos hundidos para todo lo que es pantalla. Tema unico. */
-  /* ruido y veteado: SVG embebido, sin pedir imágenes */
+/* "Dos tintas": papel y tinta, sin texturas ni biseles ni degradados.
+   Todo lo interactivo es celeste; lo que lanza un cálculo largo, ciruela.
+   La paleta sale de los fotogramas que pasó Dimas. Tema único. */
 :root{
-  --ruido:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='r'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23r)' opacity='0.55'/%3E%3C/svg%3E");
-  --grano:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.28' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='90' height='90' filter='url(%23g)' opacity='0.5'/%3E%3C/svg%3E");
-  --mota:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.045' numOctaves='5' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23m)' opacity='0.62'/%3E%3C/svg%3E");
-  --chrome:#b8b3a8; --chrome2:#aba69b; --luz:#e8e4db;
-  --sombra:#5f5a51; --sombra2:#3a362f;
-  --hueco:#908b81; --lienzo:#ffffff;
-  --tinta:#17150f; --tenue:#4f4a42;
-  --rojo:#a8301c; --rojo2:#cc4426;
-  --azul:#27489c; --azul2:#16306e; --azulClaro:#5a7fd4;
-  --amarillo:#d99a14; --amarillo2:#f0c24a;
-  --verde:#2b7a38; --fosforo:#49e06a;
+  --papel:#f3f1e8; --panel:#ffffff; --lienzo:#ffffff;
+  --tinta:#15130f; --tenue:#6a665e; --suave:#d8d5cc; --raya:#e2dfd5;
+  --celeste:#63b4db; --celeste2:#2a7fa8; --celeste3:#1d5f80;
+  --ciruela:#684d5e; --ciruela2:#503344; --alerta:#a0523a;
   --pix:'Silkscreen',ui-monospace,monospace;
   --sans:Tahoma,Verdana,'DejaVu Sans',system-ui,sans-serif;
   --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
@@ -30,167 +26,141 @@
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-body{
-  margin:0;color:var(--tinta);font:14px/1.5 var(--sans);
-  background-color:var(--chrome2);
-  background-image:
-    var(--grano),
-    repeating-linear-gradient(0deg, rgba(0,0,0,.05) 0 1px, transparent 1px 3px),
-    repeating-linear-gradient(45deg, rgba(0,0,0,.03) 0 2px, transparent 2px 5px);
-  background-blend-mode:overlay,multiply,normal;
-}
+body{margin:0;color:var(--tinta);font:14px/1.5 var(--sans);background:var(--papel)}
 .envoltorio{max-width:1320px;margin:0 auto;
   padding-inline:max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-right,0px));
   padding-block:22px 48px}
+.relieve,.hundido{border:2px solid var(--tinta)}
 
-/* biseles: luz arriba e izquierda, sombra abajo y derecha */
-.relieve{border:2px solid;border-color:var(--luz) var(--sombra2) var(--sombra2) var(--luz)}
-.hundido{border:2px solid;border-color:var(--sombra2) var(--luz) var(--luz) var(--sombra2)}
-
-h1{font:700 1.15rem/1.3 var(--pix);letter-spacing:.02em;text-transform:uppercase;margin:0 0 6px;
-   color:var(--tinta);text-shadow:1px 1px 0 var(--luz)}
+h1{font:700 1.15rem/1.3 var(--pix);letter-spacing:.02em;text-transform:uppercase;margin:0 0 6px;color:var(--tinta)}
 .subtitulo{color:var(--tenue);margin:0 0 20px;max-width:70ch;font-size:.86rem}
 
-/* cada panel es una ventanita con su barra de titulo */
-.tarjeta{position:relative;padding:0;min-width:0;
-  background-color:var(--chrome);
-  background-image:
-    var(--ruido),
-    var(--mota),
-    radial-gradient(120% 70% at 22% -12%, rgba(255,255,255,.18), transparent 58%),
-    radial-gradient(90% 60% at 85% 112%, rgba(0,0,0,.16), transparent 62%);
-  background-blend-mode:overlay,soft-light,normal,normal;
-  border:2px solid;border-color:var(--luz) var(--sombra2) var(--sombra2) var(--luz);
-  box-shadow:2px 2px 0 rgba(0,0,0,.28);padding:14px}
-
-h2{font:700 .68rem var(--pix);text-transform:uppercase;letter-spacing:.04em;color:#f4efe6;
-   margin:0 0 12px!important;padding:5px 9px;
-   background-color:var(--azul2);
-   background-image:var(--ruido),linear-gradient(180deg,rgba(255,255,255,.22),transparent 55%),
-     linear-gradient(90deg,var(--azul),var(--azul2));
-   background-blend-mode:overlay,normal,normal;
-   border:1px solid var(--sombra2);box-shadow:inset 0 -1px 0 rgba(0,0,0,.35);
-   width:auto}
-.tarjeta > h2:first-child{margin:-12px -12px 14px!important}   /* la barra de título sale al borde */
+.tarjeta{position:relative;min-width:0;background:var(--panel);border:2px solid var(--tinta);padding:14px}
+h2{font:700 .68rem var(--pix);text-transform:uppercase;letter-spacing:.04em;color:var(--tinta);
+   margin:0 0 12px!important;padding:7px 10px;background:var(--panel);
+   border-bottom:2px solid var(--tinta);width:auto}
+.tarjeta > h2:first-child{margin:-14px -14px 14px!important}
 
 label{display:block;font:700 .62rem var(--pix);text-transform:uppercase;color:var(--tenue);margin-bottom:6px}
-
 input[type=text],select{width:100%;font:14px var(--mono);padding:6px 8px;color:var(--tinta);
-  background:var(--lienzo);border:2px solid;border-color:var(--sombra2) var(--luz) var(--luz) var(--sombra2)}
-input[type=text]:focus-visible,select:focus-visible{outline:2px dotted var(--azul);outline-offset:-5px}
+  background:var(--lienzo);border:2px solid var(--tinta)}
+input[type=text]:focus-visible,select:focus-visible{outline:2px solid var(--celeste);outline-offset:1px}
+input[type=file]{font:12px var(--mono);max-width:100%}
 
 button{font-family:var(--pix)}
 .ejemplos{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
 .ejemplos button,.acciones button,.vistas button,.pestanas button{
   font:700 .62rem var(--pix);text-transform:uppercase;padding:7px 11px;cursor:pointer;
-  color:var(--tinta);background-color:var(--chrome);
-  background-image:var(--ruido),linear-gradient(180deg,rgba(255,255,255,.18),rgba(0,0,0,.1));
-  background-blend-mode:overlay,normal;
-  border:2px solid;border-color:var(--luz) var(--sombra2) var(--sombra2) var(--luz)}
-.ejemplos button:hover,.acciones button:hover,.vistas button:hover{background-color:#c6c1b6}
-.ejemplos button:active,.acciones button:active,.vistas button:active,.primario:active{
-  border-color:var(--sombra2) var(--luz) var(--luz) var(--sombra2);padding:8px 10px 6px 12px}
+  color:var(--tinta);background:var(--panel);border:2px solid var(--tinta)}
+.ejemplos button:hover,.acciones button:hover,.vistas button:hover{background:var(--papel)}
+.ejemplos button:active,.acciones button:active,.vistas button:active,.primario:active{background:var(--suave)}
 
 .primario{display:block;width:100%;font:700 .8rem var(--pix);text-transform:uppercase;padding:11px;cursor:pointer;
-  color:#f8f2e6;background-color:var(--rojo);
-  background-image:var(--ruido),linear-gradient(180deg,var(--rojo2),var(--rojo));
-  background-blend-mode:overlay,normal;
-  border:2px solid;border-color:#e08a6a var(--sombra2) var(--sombra2) #e08a6a;
-  text-shadow:1px 1px 0 rgba(0,0,0,.45)}
-.primario:hover:not(:disabled){background:linear-gradient(180deg,#d14d2b,#a03220)}
-.primario:disabled{cursor:default;color:var(--tenue);background:var(--chrome);
-  border-color:var(--luz) var(--sombra2) var(--sombra2) var(--luz);text-shadow:1px 1px 0 var(--luz)}
+  color:#fff;background:var(--ciruela);border:2px solid var(--tinta)}
+.primario:hover:not(:disabled){background:var(--ciruela2)}
+.primario.azul{background:var(--celeste2)}
+.primario.azul:hover:not(:disabled){background:var(--celeste3)}
+.primario:disabled{cursor:default;color:var(--tenue);background:var(--suave)}
 
-.estado{margin-top:9px;font:.76rem var(--mono);color:var(--tenue);min-height:1.4em}
-.estado.error{color:var(--rojo);font-weight:600}
+.estado{margin-top:9px;font:.76rem/1.45 var(--mono);color:var(--tenue);min-height:1.4em;overflow-wrap:anywhere}
+.estado.error{color:var(--alerta);font-weight:600}
 .paso{display:flex;justify-content:space-between;gap:12px;font:.75rem/1.85 var(--mono);color:var(--tenue);
-  border-bottom:1px solid rgba(0,0,0,.14);padding:1px 0}
+  border-bottom:1px solid var(--raya);padding:1px 0}
 .paso:last-child{border-bottom:0}
 .paso span:last-child{color:var(--tinta);font-weight:500}
 
-.rejilla{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:0;background:var(--chrome);
-  border:2px solid;border-color:var(--sombra2) var(--luz) var(--luz) var(--sombra2);overflow:hidden}
-.celda{padding:9px 12px;min-width:0;box-shadow:1px 0 0 rgba(0,0,0,.16),0 1px 0 rgba(0,0,0,.16)}
+.rejilla{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:0;
+  background:var(--panel);border:2px solid var(--tinta);overflow:hidden}
+.celda{padding:9px 12px;min-width:0;background:var(--panel);
+  border-right:1px solid var(--raya);border-bottom:1px solid var(--raya)}
 .celda .k{font:700 .56rem var(--pix);text-transform:uppercase;color:var(--tenue)}
-.celda .v{font:600 1.1rem var(--mono);font-variant-numeric:tabular-nums;margin-top:3px;color:var(--azul2)}
+.celda .v{font:600 1.1rem var(--mono);font-variant-numeric:tabular-nums;margin-top:3px;color:var(--celeste2)}
 .celda .u{font-size:.64rem;color:var(--tenue);margin-left:3px}
 .vacio{color:var(--tenue);font-size:.84rem;padding:6px 0}
 
 table{width:100%;border-collapse:collapse;font:.78rem var(--mono);font-variant-numeric:tabular-nums}
-th,td{text-align:right;padding:6px 9px;border-bottom:1px solid rgba(0,0,0,.14);white-space:nowrap}
+th,td{text-align:right;padding:6px 9px;border-bottom:1px solid var(--raya);white-space:nowrap}
 th:first-child,td:first-child{text-align:left}
-th{font:700 .56rem var(--pix);text-transform:uppercase;color:#f4efe6;background:var(--azul);
-   border-bottom:2px solid var(--sombra2)}
-.desborde{overflow-x:auto;background:var(--lienzo);
-  border:2px solid;border-color:var(--sombra2) var(--luz) var(--luz) var(--sombra2)}
+th{font:700 .56rem var(--pix);text-transform:uppercase;color:var(--tenue);background:var(--papel);
+   border-bottom:2px solid var(--tinta)}
+.desborde{overflow-x:auto;background:var(--lienzo);border:2px solid var(--tinta)}
 
 .acciones{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
 .nota{margin-top:24px;font-size:.78rem;color:var(--tenue);max-width:74ch}
-.nota code{font:.95em var(--mono);background:var(--chrome);padding:1px 5px;
-  border:1px solid;border-color:var(--sombra) var(--luz) var(--luz) var(--sombra)}
+.nota code{font:.95em var(--mono);background:var(--panel);padding:1px 5px;border:1px solid var(--suave)}
 
 .pila{display:flex;flex-direction:column;gap:16px;min-width:0}
 .columnas{display:grid;grid-template-columns:minmax(0,360px) minmax(0,1fr);gap:16px;align-items:start}
 @media (max-width:860px){.columnas{grid-template-columns:1fr}}
 
-.pestanas{display:flex;gap:3px;margin-bottom:0;padding-left:4px}
-.pestanas button{margin-bottom:-2px;border-bottom-color:var(--chrome);position:relative;z-index:2}
-.pestanas button.activa{background:#cbc6ba;padding-bottom:9px;color:var(--azul2)}
-#panel-descriptores,#panel-docking{border-top:2px solid var(--luz);padding-top:16px}
+.pestanas{display:flex;gap:4px;margin-bottom:0;padding-left:4px}
+.pestanas button{margin-bottom:-2px;position:relative;z-index:2;background:var(--raya)}
+.pestanas button.activa{background:var(--panel);border-bottom-color:var(--panel);padding-bottom:9px}
+#panel-descriptores,#panel-docking,#panel-complejo{border-top:2px solid var(--tinta);padding-top:16px}
+#panel-complejo{display:flex;flex-direction:column;gap:16px}
+#cajaComplejo{position:relative}
+#visorComplejo{width:100%;height:100%;cursor:grab}
+.vistas select{font:12px var(--mono);padding:4px 6px;max-width:260px;
+  border:2px solid var(--tinta);background:var(--lienzo)}
+.leyenda{display:flex;flex-wrap:wrap;gap:16px;align-items:center}
+.leyenda .it{display:flex;align-items:center;gap:7px;font:700 .58rem var(--pix);text-transform:uppercase;color:var(--tenue)}
+.leyenda .mu{width:24px;border-top:3px dashed}
+.tipo{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.tipo i{width:9px;height:9px;flex:none;display:inline-block;border:1px solid var(--tinta)}
+.criterios{font:.78rem/1.6 var(--sans);color:var(--tinta);margin:0}
+.criterios b{font:700 .62rem var(--pix);text-transform:uppercase;color:var(--tenue);letter-spacing:.02em}
+.criterios li{margin-bottom:7px}
+.criterios ul{margin:0 0 12px;padding-left:18px}
 
-.lienzo{overflow:hidden;background:var(--lienzo);position:relative;
-  border:2px solid;border-color:var(--sombra2) var(--luz) var(--luz) var(--sombra2)}
+.lienzo{overflow:hidden;background:var(--lienzo);position:relative;border:2px solid var(--tinta)}
 .lienzo openchemlib-editor{display:block;width:100%;height:100%;background:#fff}
 #panel-descriptores{display:flex;flex-direction:column;gap:16px}
 .lienzo-grande .lienzo{height:clamp(380px,70vh,760px)}
-.barra{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:start}
+.barra{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,300px);gap:18px;align-items:start}
 .barra .campo{min-width:0}
-.barra .botonera{display:flex;flex-direction:column;gap:9px;align-items:stretch;min-width:280px}
+.barra .botonera{display:flex;flex-direction:column;gap:9px;align-items:stretch;min-width:0}
 .columnas-res{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
 @media (max-width:860px){.barra{grid-template-columns:1fr}.barra .botonera{min-width:0}.columnas-res{grid-template-columns:1fr}}
 
 .interruptor{display:flex;align-items:center;gap:8px;font:400 .8rem var(--sans);color:var(--tinta);
   text-transform:none;margin:0}
-.interruptor input{accent-color:var(--azul);width:14px;height:14px}
+.interruptor input{accent-color:var(--celeste2);width:14px;height:14px}
 .aclara{color:var(--tenue);font-size:.76rem}
 
-.vistas{display:flex;gap:5px;align-items:center;margin-bottom:10px}
-.vistas button.activa{background:#cbc6ba;color:var(--azul2);
-  border-color:var(--sombra2) var(--luz) var(--luz) var(--sombra2)}
+.vistas{display:flex;gap:5px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.vistas button.activa{background:var(--celeste);color:var(--tinta)}
 .pie3d{margin-left:auto;font:.72rem var(--mono);color:var(--tenue)}
 #caja3d{position:relative}
-#visor3d{width:100%;height:100%}
+#visor3d{width:100%;height:100%;cursor:grab}
+#visor3d.agarrando{cursor:grabbing}
 .taller{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;padding:9px 11px;
-  background-color:var(--chrome);background-image:var(--ruido);background-blend-mode:overlay;
-  border:2px solid;border-color:var(--luz) var(--sombra2) var(--sombra2) var(--luz)}
+  background:var(--papel);border:2px solid var(--tinta)}
 .taller .grupo{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
 .taller button{font:700 .6rem var(--pix);text-transform:uppercase;padding:6px 9px;cursor:pointer;
-  color:var(--tinta);background-color:var(--chrome);
-  background-image:var(--ruido),linear-gradient(180deg,rgba(255,255,255,.18),rgba(0,0,0,.1));
-  background-blend-mode:overlay,normal;
-  border:2px solid;border-color:var(--luz) var(--sombra2) var(--sombra2) var(--luz)}
-.taller button:hover{background:#c6c1b6}
-.taller button.destacado{background:linear-gradient(180deg,var(--rojo2),var(--rojo));color:#f8f2e6;
-  border-color:#e08a6a var(--sombra2) var(--sombra2) #e08a6a}
+  color:var(--tinta);background:var(--panel);border:2px solid var(--tinta)}
+.taller button:hover{background:var(--suave)}
+.taller button.destacado{background:var(--ciruela);color:#fff}
+.taller button.destacado:hover{background:var(--ciruela2)}
 .taller input{width:58px;font:12px var(--mono);padding:4px 6px;
-  border:2px solid;border-color:var(--sombra2) var(--luz) var(--luz) var(--sombra2);background:var(--lienzo)}
+  border:2px solid var(--tinta);background:var(--lienzo)}
 .taller .rot{font:700 .58rem var(--pix);text-transform:uppercase;color:var(--tenue)}
-.taller .dato{font:600 .74rem var(--mono);color:var(--azul2);min-width:76px}
+.taller .dato{font:600 .74rem var(--mono);color:var(--celeste2);min-width:66px}
+.taller .ayuda{font:.74rem var(--sans);color:var(--tenue)}
 .paramsOpt{display:grid;grid-template-columns:auto 72px;gap:5px 9px;align-items:center}
 .paramsOpt span{font:700 .58rem var(--pix);text-transform:uppercase;color:var(--tenue)}
 .paramsOpt input{font:12px var(--mono);padding:4px 6px;width:100%;
-  border:2px solid;border-color:var(--sombra2) var(--luz) var(--luz) var(--sombra2);background:var(--lienzo)}
+  border:2px solid var(--tinta);background:var(--lienzo)}
 .sinGeo{position:absolute;inset:0;display:grid;place-content:center;text-align:center;pointer-events:none}
 
 .caja{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center}
 .caja span{font:700 .6rem var(--pix);text-transform:uppercase;color:var(--tenue)}
 .caja input{font:12px var(--mono);padding:5px 7px;width:100%}
-.consola{font:.74rem/1.5 var(--mono);color:var(--fosforo);background:#0a0c08;
-  border:2px solid;border-color:var(--sombra2) var(--luz) var(--luz) var(--sombra2);
-  padding:10px;max-height:240px;overflow:auto;white-space:pre-wrap;word-break:break-word;margin:0}
-.aviso{background:#e8d98f;border:2px solid;border-color:var(--amarillo2) var(--sombra2) var(--sombra2) var(--amarillo2);
-  padding:12px 14px;font-size:.84rem;margin-bottom:16px;color:#3a2f12}
-.aviso code{background:#c7bd83;font:.95em var(--mono);padding:1px 4px}
+.consola{font:.74rem/1.5 var(--mono);color:var(--papel);background:var(--tinta);
+  border:2px solid var(--tinta);padding:10px;max-height:240px;overflow:auto;
+  white-space:pre-wrap;word-break:break-word;margin:0}
+.aviso{background:#ddeef7;border:2px solid var(--tinta);
+  padding:12px 14px;font-size:.84rem;margin-bottom:16px;color:var(--tinta)}
+.aviso code{background:var(--panel);font:.95em var(--mono);padding:1px 4px;border:1px solid var(--suave)}
 </style>
 </head>
 <body>
@@ -201,6 +171,7 @@ th{font:700 .56rem var(--pix);text-transform:uppercase;color:#f4efe6;background:
   <nav class="pestanas" id="pestanas">
     <button data-p="descriptores" class="activa">Descriptores</button>
     <button data-p="docking">Docking</button>
+    <button data-p="complejo">Complejo</button>
   </nav>
 
   <div id="panel-descriptores">
@@ -218,17 +189,18 @@ th{font:700 .56rem var(--pix);text-transform:uppercase;color:#f4efe6;background:
         <div class="grupo">
           <span class="rot">Átomo</span>
           <span class="dato" id="selAtomo">ninguno</span>
-          <button id="nx-">X&minus;</button><button id="nx+">X+</button>
-          <button id="ny-">Y&minus;</button><button id="ny+">Y+</button>
-          <button id="nz-">Z&minus;</button><button id="nz+">Z+</button>
-          <input type="text" id="nPaso" value="0.30" title="desplazamiento en ángstrom">
-          <span class="rot">Å</span>
+          <span class="ayuda">arrastralo con el mouse para moverlo</span>
         </div>
         <div class="grupo">
           <button id="distorsionar">Distorsionar</button>
           <input type="text" id="ampDist" value="0.12" title="amplitud en ángstrom">
           <span class="rot">Å</span>
-          <button id="reoptimizar" class="destacado">Reoptimizar</button>
+          <button id="encuadrar">Encuadrar</button>
+        </div>
+        <div class="grupo">
+          <span class="rot">pasos</span><input type="text" id="optPasos" value="150">
+          <span class="rot">umbral |F|</span><input type="text" id="optFuerza" value="1e-3">
+          <button id="reoptimizar" class="destacado">Minimizar</button>
         </div>
       </div>
     </div>
@@ -244,12 +216,6 @@ th{font:700 .56rem var(--pix);text-transform:uppercase;color:#f4efe6;background:
           <button id="delDibujo">Tomar del dibujo</button>
           <button id="alDibujo">Llevar al dibujo</button>
         </div>
-        <label class="interruptor"><input type="checkbox" id="optGfn2"> Optimizar la geometría con GFN2 <span class="aclara">(más lento)</span></label>
-        <div class="paramsOpt">
-          <span>pasos máx</span><input type="text" id="optPasos" value="150">
-          <span>umbral |F| (Ha/Bohr)</span><input type="text" id="optFuerza" value="1e-3">
-        </div>
-        <button class="primario" id="calcular" disabled>Cargando librerías…</button>
         <div class="estado" id="estado"></div>
       </div>
     </div>
@@ -257,7 +223,8 @@ th{font:700 .56rem var(--pix);text-transform:uppercase;color:#f4efe6;background:
     <div class="columnas-res">
       <div class="tarjeta">
         <h2>Resultado</h2>
-        <div id="resultado"><p class="vacio">Dibujá o elegí una molécula y calculá.</p></div>
+        <button class="primario azul" id="calcular" disabled>Cargando librerías…</button>
+        <div id="resultado" style="margin-top:14px"><p class="vacio">Dibujá o elegí una molécula y calculá.</p></div>
         <div id="tiempos" style="margin-top:16px"></div>
       </div>
       <div class="tarjeta">
@@ -314,6 +281,51 @@ th{font:700 .56rem var(--pix);text-transform:uppercase;color:#f4efe6;background:
     </div>
   </div>
 
+  <div id="panel-complejo" hidden>
+    <div class="tarjeta lienzo-grande">
+      <div class="vistas">
+        <span class="rot" style="font:700 .58rem var(--pix);text-transform:uppercase;color:var(--tenue)">Pose</span>
+        <select id="poseSel"></select>
+        <button id="vCinta" class="activa">Cinta</button>
+        <button id="vSuperficie">Superficie</button>
+        <button id="vDistancias" class="activa">Distancias</button>
+        <button id="encuadrarC">Encuadrar</button>
+        <span class="pie3d" id="pieComplejo"></span>
+      </div>
+      <div class="lienzo" id="cajaComplejo"><div id="visorComplejo"></div>
+        <p class="vacio sinGeo" id="sinComplejo">Todavía no hay poses. Dockeá en la pestaña anterior, o cargá un <code>.pdbqt</code> de poses desde la tarjeta de abajo.</p>
+      </div>
+      <div class="taller leyenda" id="leyenda" hidden></div>
+    </div>
+
+    <div class="columnas-res">
+      <div class="tarjeta">
+        <h2>Interacciones</h2>
+        <div id="tablaInter"><p class="vacio">Elegí una pose y acá aparece el detalle residuo por residuo.</p></div>
+        <div class="acciones" style="margin-top:12px">
+          <button id="copiarInter">Copiar como CSV</button>
+          <button id="bajarInter">Descargar CSV</button>
+        </div>
+      </div>
+      <div class="tarjeta">
+        <h2>Criterios</h2>
+        <div class="criterios">
+          <ul>
+            <li><b>Puente de hidrógeno</b> — D···A ≤ 3,5 Å, H···A ≤ 2,6 Å y ángulo D–H···A ≥ 130°. Se usan los hidrógenos polares que ya trae el PDBQT.</li>
+            <li><b>Hidrofóbica</b> — C···C ≤ 4,0 Å entre carbonos sin N ni O unidos; se conserva sólo el contacto más corto de cada residuo.</li>
+            <li><b>π–π</b> — centroides a ≤ 5,5 Å, desplazamiento lateral ≤ 2,0 Å y normales a &lt; 30° (paralela) o &gt; 50° (en T).</li>
+            <li><b>Halógeno</b> — X···N/O ≤ 4,0 Å con ángulo C–X···A ≥ 140°.</li>
+            <li><b>Puente salino</b> — centros de carga a ≤ 5,0 Å. Los grupos del receptor se reconocen por nombre de residuo (ASP, GLU, ARG, LYS, HIS) y los del ligando por conectividad.</li>
+          </ul>
+          <p style="margin:0 0 12px">Vina no modela los puentes de hidrógeno de forma direccional: su función de <em>scoring</em> sólo mira distancias. Este mapa es un análisis geométrico de la pose que ya salió, igual que el que hacen los visores de AutoDock, y no cambia el ΔG.</p>
+        </div>
+        <label for="poseArchivo" style="margin-top:4px">Cargar poses de otro lado</label>
+        <input type="file" id="poseArchivo" accept=".pdbqt">
+        <div class="estado" id="complejoEstado"></div>
+      </div>
+    </div>
+  </div>
+
   <p class="nota">GFN2-xTB es un método semiempírico de <em>tight binding</em>, no DFT. El momento dipolar se reconstruye a partir de los multipolos atómicos CAMM. Los valores dependen del confórmero: si volvés a calcular la misma molécula, el dipolo puede moverse y el HOMO casi no. Componentes: <code>openchemlib</code>, <code>@rdkit/rdkit</code> y <code>@peterspackman/occjs</code>.</p>
 </div>
 
@@ -349,6 +361,7 @@ function leerError(e) {
   return e && e.message ? e.message : String(e);
 }
 window.__geo = () => geo;   // para inspección y pruebas
+window.__bajoCursor = (x,y) => atomoBajoCursor(x,y);
 
 $('ejemplos').innerHTML = EJEMPLOS.map(([n, s], i) =>
   `<button data-i="${i}">${n}</button>`).join('');
@@ -442,8 +455,8 @@ async function optimizarGFN2(calc, n, avisar) {
     if (dE < TOL_E && vmax(g) < TOL_F * 5) break;
   }
   calc.updateStructure(armarMat(x, n));
-  calc.singlePoint();
-  return { pasos, dE: (E - E0) * 627.509, fuerzaMax: vmax(g), convergio: vmax(g) < TOL_F, x };
+  const final = calc.singlePoint();
+  return { pasos, dE: (E - E0) * 627.509, fuerzaMax: vmax(g), convergio: vmax(g) < TOL_F, x, res: final };
 }
 
 const vec = (v) => { const n = v.size(), a = []; for (let i = 0; i < n; i++) a.push(v.get(i)); return a; };
@@ -465,7 +478,7 @@ async function calcular(smiles) {
     geo.Z.push(conf.getAtomicNo(i)); geo.et.push(conf.getAtomLabel(i));
     geo.xyz.push(conf.getAtomX(i), conf.getAtomY(i), conf.getAtomZ(i));
   }
-  atomoSel = null; $('selAtomo').textContent = 'ninguno';
+  atomoSel = null; $('selAtomo').textContent = 'ninguno'; yaEncuadrado = false;
   t.geometria = performance.now() - t0;
 
   t0 = performance.now();
@@ -481,30 +494,6 @@ async function calcular(smiles) {
   let res = calc.singlePoint();
   t.gfn2 = performance.now() - t0;
 
-  if ($('optGfn2').checked) {
-    const t1 = performance.now();
-    const etiquetas = [];
-    for (let i = 0; i < Z.length; i++) etiquetas.push(conf.getAtomLabel(i));
-    verVista('3d');                                     // mostrar el lienzo 3D para seguir la relajación
-    dibujarCuadro(xyzDesde(leerMat(calc.positions(), Z.length), etiquetas), 'geometría MMFF94, por optimizar');
-    await new Promise((r) => setTimeout(r, 60));
-    const o = await optimizarGFN2(calc, Z.length, (p, dE, f, pos) => {
-      estado(`Optimizando con GFN2: paso ${p}, ${(dE * 627.509).toFixed(1)} kcal/mol, |F|max ${f.toExponential(1)}`);
-      dibujarCuadro(xyzDesde(pos, etiquetas),
-        `paso ${p} · ΔE ${(dE * 627.509).toFixed(2)} kcal/mol · |F|max ${f.toExponential(1)}`);
-    });
-    res = calc.lastResult();
-    r.opt = o;
-    t.optimizacion = performance.now() - t1;
-    const P = calc.positions();                    // geometría optimizada, de Bohr a ángstrom
-    const B = 0.529177210903;
-    const lineas = [String(Z.length), 'optimizado con GFN2'];
-    for (let i = 0; i < Z.length; i++)
-      lineas.push(`${conf.getAtomLabel(i)} ${(P.get(0,i)*B).toFixed(6)} ${(P.get(1,i)*B).toFixed(6)} ${(P.get(2,i)*B).toFixed(6)}`);
-    ultimaGeometria = { xyz: lineas.join('\n'), nombre: smiles, E: r.mmff94, n: r.atomos, nivel: 'GFN2' };
-    geo = { Z: Z.slice(), et: etiquetas.slice(), xyz: [], nivel: 'GFN2' };
-    for (let i = 0; i < Z.length; i++) for (let k = 0; k < 3; k++) geo.xyz.push(P.get(k, i) * BOHR_A);
-  }
 
   const en = vec(res.orbitalEnergies), oc = vec(res.orbitalOccupations);
   const nocc = oc.filter((o) => o > 0.5).length;
@@ -541,8 +530,7 @@ function pintar(r, t) {
   ).join('') + '</div>';
   $('tiempos').innerHTML = [
     ['Geometría 3D + MMFF94', t.geometria], ['GFN2-xTB', t.gfn2], ['Descriptores RDKit', t.rdkit],
-  ].concat(t.optimizacion ? [['Optimización GFN2', t.optimizacion]] : [])
-    .map(([n, ms]) => `<div class="paso"><span>${n}</span><span>${(ms / 1000).toFixed(2)} s</span></div>`).join('')
+  ].map(([n, ms]) => `<div class="paso"><span>${n}</span><span>${(ms / 1000).toFixed(2)} s</span></div>`).join('')
     + (r.opt ? `<div class="paso"><span>Pasos · ΔE · |F|max</span><span>${r.opt.pasos} · ${r.opt.dE.toFixed(1)} kcal/mol · ${r.opt.fuerzaMax.toExponential(1)}${r.opt.convergio ? '' : ' (no convergió)'}</span></div>` : '')
     + `<div class="paso"><span>Energía MMFF94</span><span>${r.mmff94.toFixed(2)} kcal/mol</span></div>`
     + `<div class="paso"><span>Átomos · SCF</span><span>${r.atomos} · ${r.convergio ? 'convergió' : 'NO convergió'}</span></div>`;
@@ -574,10 +562,11 @@ $('calcular').addEventListener('click', () => {
   setTimeout(async () => {
     try {
       const { r, t } = await calcular(s);
+      ultimoResultado = { r, t };
       pintar(r, t);
       mostrarGeometria();
       serie.push(r); pintarSerie();
-      estado(`Listo en ${((t.geometria + t.gfn2 + t.rdkit + (t.optimizacion || 0)) / 1000).toFixed(2)} s.`);
+      estado(`Listo en ${((t.geometria + t.gfn2 + t.rdkit) / 1000).toFixed(2)} s.`);
     } catch (e) {
       estado('Error: ' + leerError(e), true);
     } finally {
@@ -601,15 +590,23 @@ $('limpiar').addEventListener('click', () => { serie = []; pintarSerie(); estado
 
 
 // ───────────────────────── visor de geometría 3D ─────────────────────────
+let yaEncuadrado = false;
+// un solo lugar crea el visor, para que el arrastre quede siempre enganchado
+function asegurarVisor() {
+  if (visor) return;
+  visor = $3Dmol.createViewer($('visor3d'), { backgroundColor: 'white' });
+  armarArrastre();
+}
+
 function dibujarCuadro(xyz, pie) {
   if (!window.$3Dmol) return;
   $('sinGeo').hidden = true;
-  if (!visor) visor = $3Dmol.createViewer($('visor3d'), { backgroundColor: 'white' });
-  const primera = !visor.getModel();
+  asegurarVisor();
   visor.removeAllModels();
   visor.addModel(xyz, 'xyz');
   visor.setStyle({}, { stick: { radius: 0.13 }, sphere: { scale: 0.22 } });
-  if (primera) visor.zoomTo();          // encuadrar solo al principio: si no, la molécula salta
+  // nunca re-encuadrar solo: mueve la cámara bajo el mouse y desorienta
+  if (!yaEncuadrado) { visor.zoomTo(); yaEncuadrado = true; }
   visor.render();
   if (pie) $('pie3d').textContent = pie;
 }
@@ -617,13 +614,11 @@ function dibujarCuadro(xyz, pie) {
 function mostrarGeometria() {
   if (!ultimaGeometria || !window.$3Dmol) return;
   $('sinGeo').hidden = true;
-  if (!visor) {
-    visor = $3Dmol.createViewer($('visor3d'), { backgroundColor: 'white' });
-  }
+  asegurarVisor();
   visor.clear();
   visor.addModel(ultimaGeometria.xyz ?? ultimaGeometria.molfile, ultimaGeometria.xyz ? 'xyz' : 'mol');
   visor.setStyle({}, { stick: { radius: 0.13 }, sphere: { scale: 0.22 } });
-  visor.zoomTo();
+  if (!yaEncuadrado) { visor.zoomTo(); yaEncuadrado = true; }
   visor.render();
   $('pie3d').textContent = ultimaGeometria.nivel === 'GFN2'
     ? `${ultimaGeometria.n} átomos · geometría optimizada con GFN2`
@@ -659,34 +654,78 @@ function pintarGeo(pie) {
   if (!geo) return;
   dibujarCuadro(geoAXyz(geo), pie);
   if (atomoSel !== null && visor) {
-    const p = [geo.xyz[atomoSel*3], geo.xyz[atomoSel*3+1], geo.xyz[atomoSel*3+2]];
-    visor.addSphere({ center: { x: p[0], y: p[1], z: p[2] }, radius: 0.55, color: 'red', opacity: 0.45 });
+    const p = geo.xyz.slice(atomoSel*3, atomoSel*3+3);
+    visor.addSphere({ center: { x: p[0], y: p[1], z: p[2] }, radius: 0.5, color: '#cc4426', opacity: 0.5 });
     visor.render();
   }
   $('taller').hidden = false;
-  if (visor && !visor.__clic) {                     // click para seleccionar un átomo
-    visor.__clic = true;
-    visor.setClickable({}, true, (at) => {
-      let mejor = 0, dmin = Infinity;
-      for (let i = 0; i < geo.Z.length; i++) {
-        const d = (geo.xyz[i*3]-at.x)**2 + (geo.xyz[i*3+1]-at.y)**2 + (geo.xyz[i*3+2]-at.z)**2;
-        if (d < dmin) { dmin = d; mejor = i; }
-      }
-      atomoSel = mejor;
-      $('selAtomo').textContent = `${geo.et[mejor]}${mejor + 1}`;
-      pintarGeo();
-    });
-  }
 }
 
-function mover(eje, signo) {
-  if (!geo) { estado('Primero calculá una molécula.', true); return; }
-  if (atomoSel === null) { estado('Hacé clic en un átomo del visor para elegirlo.', true); return; }
-  const d = Math.abs(parseFloat($('nPaso').value) || 0.3) * signo;
-  geo.xyz[atomoSel*3 + eje] += d;
-  geo.nivel = 'movida a mano';
-  pintarGeo(`${geo.Z.length} átomos · geometría movida a mano`);
-  estado(`${geo.et[atomoSel]}${atomoSel+1} desplazado ${d.toFixed(2)} Å en ${'XYZ'[eje]}.`);
+// Arrastre de átomos. 3Dmol no lo trae, así que se arma con sus dos proyecciones:
+// modelToScreen dice qué átomo está bajo el cursor y screenOffsetToModel convierte
+// el movimiento del mouse en un desplazamiento en el plano de la cámara.
+function atomoBajoCursor(px, py) {
+  if (!geo || !visor) return null;
+  let mejor = null, dmin = 20;            // radio de agarre, en píxeles
+  for (let i = 0; i < geo.Z.length; i++) {
+    const s = visor.modelToScreen({ x: geo.xyz[i*3], y: geo.xyz[i*3+1], z: geo.xyz[i*3+2] });
+    const d = Math.hypot(s.x - px, s.y - py);
+    if (d < dmin) { dmin = d; mejor = i; }
+  }
+  return mejor;
+}
+
+function armarArrastre() {
+  const caja = $('visor3d');
+  let arrastrando = false, ultimo = null;
+  const pos = (e) => { const r = caja.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+
+  caja.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    const [x, y] = pos(e);
+    const i = atomoBajoCursor(x, y);
+    if (i === null) return;               // sin átomo debajo, que 3Dmol rote como siempre
+    atomoSel = i; arrastrando = true; ultimo = [x, y];
+    $('selAtomo').textContent = `${geo.et[i]}${i + 1}`;
+    caja.classList.add('agarrando');
+    e.stopPropagation(); e.preventDefault();
+    pintarGeo();
+  }, true);
+
+  window.addEventListener('mousemove', (e) => {
+    if (!arrastrando) return;
+    const [x, y] = pos(e);
+    const d = visor.screenOffsetToModel(x - ultimo[0], y - ultimo[1]);
+    ultimo = [x, y];
+    geo.xyz[atomoSel*3] += d.x; geo.xyz[atomoSel*3+1] += d.y; geo.xyz[atomoSel*3+2] += d.z;
+    geo.nivel = 'movida a mano';
+    pintarGeo(`${geo.Z.length} átomos · ${geo.et[atomoSel]}${atomoSel+1} movido a mano`);
+    e.stopPropagation(); e.preventDefault();
+  }, true);
+
+  window.addEventListener('mouseup', () => {
+    if (!arrastrando) return;
+    arrastrando = false; caja.classList.remove('agarrando');
+    estado(`${geo.et[atomoSel]}${atomoSel+1} movido. Minimizá para ver cómo se reacomoda.`);
+  }, true);
+}
+
+$('encuadrar').onclick = () => { if (visor) { visor.zoomTo(); visor.render(); } };
+
+// tras minimizar cambian los descriptores electrónicos; los 2D de RDKit no
+let ultimoResultado = null;
+function actualizarElectronicos(res, calc) {
+  if (!ultimoResultado) return;
+  const { r, t } = ultimoResultado;
+  const en = vec(res.orbitalEnergies), oc = vec(res.orbitalOccupations);
+  const nocc = oc.filter((o) => o > 0.5).length;
+  r.homo = en[nocc-1] * HA2EV; r.lumo = en[nocc] * HA2EV; r.gap = r.lumo - r.homo;
+  const q = vec(res.atomicCharges), ad = res.atomicDipoles, P = calc.positions();
+  const mu = [0, 0, 0];
+  for (let i = 0; i < q.length; i++) for (let k = 0; k < 3; k++) mu[k] += q[i]*P.get(k,i) + ad.get(k,i);
+  r.dipolo = Math.hypot(...mu) * AU2D;
+  r.convergio = res.converged;
+  pintar(r, t);
 }
 
 function nuevoCalculador() {
@@ -697,10 +736,6 @@ function nuevoCalculador() {
   const mol = new OCC.Molecule(OCC.IVec.fromArray(geo.Z), pm);
   return OCC.XtbCalculator.fromMolecule(mol, OCC.XtbMethod.GFN2);
 }
-
-$('nx-').onclick = () => mover(0,-1); $('nx+').onclick = () => mover(0,1);
-$('ny-').onclick = () => mover(1,-1); $('ny+').onclick = () => mover(1,1);
-$('nz-').onclick = () => mover(2,-1); $('nz+').onclick = () => mover(2,1);
 
 // Un desplazamiento cartesiano puede comprimir un enlace hasta donde el SCF deja de
 // converger. Se exige distancia mínima absoluta y que ningún par ya cercano se acorte
@@ -744,7 +779,7 @@ $('distorsionar').onclick = () => {
   geo.xyz = v; geo.nivel = 'distorsionada';
   pintarGeo(`${n} átomos · distorsionada ${usada.toFixed(2)} Å`);
   const aviso = usada < pedida * 0.99 ? ` (se bajó de ${pedida.toFixed(2)} para no romper enlaces)` : '';
-  estado(`Cada átomo corrido ${usada.toFixed(2)} Å al azar${aviso}. Reoptimizá para verla volver.`);
+  estado(`Cada átomo corrido ${usada.toFixed(2)} Å al azar${aviso}. Minimizá para verla volver.`);
 };
 
 $('reoptimizar').onclick = async () => {
@@ -754,7 +789,7 @@ $('reoptimizar').onclick = async () => {
   try {
     const calc = nuevoCalculador();
     const o = await optimizarGFN2(calc, geo.Z.length, (p, dE, f, pos) => {
-      estado(`Reoptimizando: paso ${p}, ${(dE * 627.509).toFixed(1)} kcal/mol, |F|max ${f.toExponential(1)}`);
+      estado(`Minimizando: paso ${p}, ${(dE * 627.509).toFixed(1)} kcal/mol, |F|max ${f.toExponential(1)}`);
       for (let i = 0; i < pos.length; i++) geo.xyz[i] = pos[i] * BOHR_A;
       pintarGeo(`paso ${p} · ΔE ${(dE * 627.509).toFixed(2)} kcal/mol · |F|max ${f.toExponential(1)}`);
     });
@@ -762,11 +797,12 @@ $('reoptimizar').onclick = async () => {
     for (let i = 0; i < geo.Z.length; i++)
       for (let k = 0; k < 3; k++) geo.xyz[i*3+k] = P.get(k, i) * BOHR_A;
     geo.nivel = 'GFN2';
-    pintarGeo(`${geo.Z.length} átomos · reoptimizada con GFN2`);
-    estado(`Reoptimizado en ${((performance.now()-t0)/1000).toFixed(1)} s: ${o.pasos} pasos, ${o.dE.toFixed(1)} kcal/mol, |F|max ${o.fuerzaMax.toExponential(1)}${o.convergio ? '' : ' (no convergió)'}.`);
+    pintarGeo(`${geo.Z.length} átomos · minimizada con GFN2`);
+    actualizarElectronicos(o.res, calc);
+    estado(`Minimizado en ${((performance.now()-t0)/1000).toFixed(1)} s: ${o.pasos} pasos, ${o.dE.toFixed(1)} kcal/mol, |F|max ${o.fuerzaMax.toExponential(1)}${o.convergio ? '' : ' (no convergió)'}. Descriptores actualizados.`);
   } catch (e) {
     { const m = leerError(e);
-      estado('Error al reoptimizar: ' + m + (/converge/i.test(m) ? ' — probá una distorsión menor.' : ''), true); }
+      estado('Error al minimizar: ' + m + (/converge/i.test(m) ? ' — probá una distorsión menor.' : ''), true); }
   } finally { $('reoptimizar').disabled = false; }
 };
 
@@ -797,6 +833,8 @@ $('pestanas').addEventListener('click', (e) => {
   [...$('pestanas').children].forEach((x) => x.classList.toggle('activa', x === b));
   $('panel-descriptores').hidden = b.dataset.p !== 'descriptores';
   $('panel-docking').hidden = b.dataset.p !== 'docking';
+  $('panel-complejo').hidden = b.dataset.p !== 'complejo';
+  if (b.dataset.p === 'complejo') mostrarComplejo();
   if (b.dataset.p === 'docking' && !dockingPreparado) {
     dockingPreparado = true;
     prepararDocking().catch((err) => dockEstado('No se pudo preparar el docking: ' + err, true));
@@ -914,6 +952,7 @@ $('dockear').addEventListener('click', async () => {
     });
 
     ultimaPose = pose;
+    if (pose) cargarPoses(pose, 'del último docking');
     const filas = pose.split('\n').filter((l) => l.includes('VINA RESULT'))
       .map((l) => l.trim().split(/\s+/).slice(3).map(Number));
     if (!filas.length) { dockEstado('Vina no devolvió poses. Revisá la salida.', true); }
@@ -938,6 +977,442 @@ $('bajarPose').addEventListener('click', () => {
   a.href = URL.createObjectURL(new Blob([ultimaPose], { type: 'text/plain' }));
   a.download = 'poses.pdbqt'; a.click(); URL.revokeObjectURL(a.href);
 });
+
+// ────────────── complejo: la pose en el sitio y el mapa de interacciones ──────────────
+// Vina sólo devuelve coordenadas y un ΔG. Las interacciones que se dibujan acá salen de
+// medir la pose: son geometría, no términos de la función de scoring.
+const COLOR_INT = {
+  'puente H':      '#2f7fa8',
+  'hidrofóbica':   '#a8894a',
+  'π–π':           '#3f7a63',
+  'halógeno':      '#684d5e',
+  'puente salino': '#a0523a',
+};
+const TIPO_ELEM = { A:'C', C:'C', N:'N', NA:'N', NS:'N', O:'O', OA:'O', OS:'O', S:'S', SA:'S',
+  HD:'H', H:'H', F:'F', CL:'Cl', BR:'Br', I:'I', P:'P', MG:'Mg', ZN:'Zn', MN:'Mn', CA:'Ca', FE:'Fe' };
+const ACEPTORES = new Set(['OA', 'NA', 'SA']);
+// el ligando se distingue por el color del carbono; el resto de los elementos, el de siempre
+const CARBONO_LIG = { prop: 'elem', map: Object.assign({}, $3Dmol.elementColors.defaultColors, { C: 0x5b4453 }) };
+const ANILLOS_RES = {
+  PHE: [['CG','CD1','CE1','CZ','CE2','CD2']],
+  TYR: [['CG','CD1','CE1','CZ','CE2','CD2']],
+  HIS: [['CG','ND1','CE1','NE2','CD2']],
+  TRP: [['CG','CD1','NE1','CE2','CD2'], ['CD2','CE2','CZ2','CH2','CZ3','CE3']],
+};
+const CATION_RES = { ARG: ['NE','NH1','NH2'], LYS: ['NZ'], HIS: ['ND1','CE1','NE2'] };
+const ANION_RES  = { ASP: ['OD1','OD2'], GLU: ['OE1','OE2'] };
+
+const cEstado = (t, err) => { const e = $('complejoEstado'); e.textContent = t; e.classList.toggle('error', !!err); };
+let visorC = null, posesC = [], interActual = [], verSup = false, verDist = true, verCinta = true, poseRenderizada = -1;
+
+function leerPDBQT(txt) {
+  const at = [];
+  for (const l of txt.split('\n')) {
+    if (!/^(ATOM|HETATM)/.test(l)) continue;
+    const t = l.slice(77, 79).trim() || l.slice(12, 14).trim();
+    at.push({
+      nombre: l.slice(12, 16).trim(), res: l.slice(17, 20).trim(),
+      cad: l.slice(21, 22).trim(), num: parseInt(l.slice(22, 26)) || 0,
+      x: +l.slice(30, 38), y: +l.slice(38, 46), z: +l.slice(46, 54),
+      t, el: TIPO_ELEM[t.toUpperCase()] || t.slice(0, 1),
+    });
+  }
+  return at;
+}
+
+function separarPoses(txt) {
+  const poses = []; let act = null;
+  for (const l of txt.split('\n')) {
+    if (l.startsWith('MODEL')) { act = { lineas: [], dg: null }; continue; }
+    if (l.startsWith('ENDMDL')) { if (act) poses.push(act); act = null; continue; }
+    if (!act) act = { lineas: [], dg: null };
+    if (l.includes('VINA RESULT')) act.dg = parseFloat(l.trim().split(/\s+/)[3]);
+    act.lineas.push(l);
+  }
+  if (act && act.lineas.some((l) => /^(ATOM|HETATM)/.test(l))) poses.push(act);
+  return poses.filter((p) => p.lineas.some((l) => /^(ATOM|HETATM)/.test(l)));
+}
+
+// geometría elemental
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+const resta = (a, b) => [a.x - b.x, a.y - b.y, a.z - b.z];
+const punto = (u, v) => u[0]*v[0] + u[1]*v[1] + u[2]*v[2];
+const norma = (u) => Math.hypot(u[0], u[1], u[2]);
+function anguloEn(a, b, c) {       // ángulo a–b–c en grados
+  const u = resta(a, b), v = resta(c, b);
+  const d = punto(u, v) / ((norma(u) * norma(v)) || 1);
+  return Math.acos(Math.max(-1, Math.min(1, d))) * 180 / Math.PI;
+}
+const centroide = (ps) => ({
+  x: ps.reduce((s, p) => s + p.x, 0) / ps.length,
+  y: ps.reduce((s, p) => s + p.y, 0) / ps.length,
+  z: ps.reduce((s, p) => s + p.z, 0) / ps.length,
+});
+function normalNewell(ps) {        // normal del plano de un anillo, en orden cíclico
+  let nx = 0, ny = 0, nz = 0;
+  for (let i = 0; i < ps.length; i++) {
+    const a = ps[i], b = ps[(i + 1) % ps.length];
+    nx += (a.y - b.y) * (a.z + b.z);
+    ny += (a.z - b.z) * (a.x + b.x);
+    nz += (a.x - b.x) * (a.y + b.y);
+  }
+  const m = Math.hypot(nx, ny, nz) || 1;
+  return [nx / m, ny / m, nz / m];
+}
+
+// conectividad por distancia: alcanza para un PDBQT, que no trae CONECT
+function radioEnlace(a, b) {
+  const g = (e) => (e === 'H' ? 0.37 : e === 'S' || e === 'P' || e === 'Cl' || e === 'Br' || e === 'I' ? 1.05 : 0.77);
+  return g(a.el) + g(b.el) + 0.45;
+}
+function conectar(at) {
+  const ady = at.map(() => []);
+  for (let i = 0; i < at.length; i++)
+    for (let j = i + 1; j < at.length; j++)
+      if (dist(at[i], at[j]) < radioEnlace(at[i], at[j])) { ady[i].push(j); ady[j].push(i); }
+  return ady;
+}
+
+// anillos de 5 y 6 del ligando, en orden cíclico, con control de planaridad
+function anillosLigando(at, ady) {
+  const pesados = at.map((a, i) => (a.el === 'H' ? -1 : i));
+  const salida = [], vistos = new Set();
+  for (let s = 0; s < at.length; s++) {
+    if (pesados[s] < 0) continue;
+    const pila = [[s, [s]]];
+    while (pila.length) {
+      const [u, cam] = pila.pop();
+      for (const v of ady[u]) {
+        if (at[v].el === 'H') continue;
+        if (v === s && cam.length >= 5 && cam.length <= 6) {
+          const k = [...cam].sort((a, b) => a - b).join(',');
+          if (!vistos.has(k)) { vistos.add(k); salida.push(cam.slice()); }
+        } else if (v > s && !cam.includes(v) && cam.length < 6) pila.push([v, [...cam, v]]);
+      }
+    }
+  }
+  return salida.filter((ciclo) => {
+    const ps = ciclo.map((i) => at[i]);
+    if (ps.filter((a) => a.t === 'A' || a.t === 'NA').length < 3) return false;  // aromático
+    const c = centroide(ps), n = normalNewell(ps);
+    return ps.every((p) => Math.abs(punto(resta(p, c), n)) < 0.3);               // plano
+  }).map((ciclo) => {
+    const ps = ciclo.map((i) => at[i]);
+    return { idx: ciclo, c: centroide(ps), n: normalNewell(ps) };
+  });
+}
+function anillosReceptor(at) {
+  const porRes = new Map();
+  at.forEach((a, i) => {
+    const k = a.cad + '|' + a.num + '|' + a.res;
+    if (!porRes.has(k)) porRes.set(k, []);
+    porRes.get(k).push(i);
+  });
+  const salida = [];
+  for (const [k, idxs] of porRes) {
+    const res = k.split('|')[2];
+    for (const nombres of (ANILLOS_RES[res] || [])) {
+      const ps = nombres.map((nm) => idxs.find((i) => at[i].nombre === nm));
+      if (ps.some((i) => i === undefined)) continue;
+      const pts = ps.map((i) => at[i]);
+      salida.push({ idx: ps, c: centroide(pts), n: normalNewell(pts), res: at[ps[0]] });
+    }
+  }
+  return salida;
+}
+
+// grupos cargados
+function cargasReceptor(at) {
+  const porRes = new Map();
+  at.forEach((a, i) => {
+    const k = a.cad + '|' + a.num + '|' + a.res;
+    if (!porRes.has(k)) porRes.set(k, []);
+    porRes.get(k).push(i);
+  });
+  const g = [];
+  for (const [k, idxs] of porRes) {
+    const res = k.split('|')[2];
+    for (const [tabla, signo] of [[CATION_RES, +1], [ANION_RES, -1]]) {
+      const nombres = tabla[res]; if (!nombres) continue;
+      const ps = idxs.filter((i) => nombres.includes(at[i].nombre));
+      if (ps.length) g.push({ c: centroide(ps.map((i) => at[i])), signo, ref: at[ps[0]] });
+    }
+  }
+  return g;
+}
+function cargasLigando(at, ady) {
+  const g = [];
+  for (let i = 0; i < at.length; i++) {
+    const vec = ady[i].map((j) => at[j]);
+    if (at[i].el === 'C') {
+      const ox = ady[i].filter((j) => at[j].el === 'O');
+      // carboxilato: dos oxígenos y ninguno protonado
+      if (ox.length === 2 && !ox.some((j) => ady[j].some((h) => at[h].el === 'H')))
+        g.push({ c: centroide([at[i], ...ox.map((j) => at[j])]), signo: -1, ref: at[i] });
+      // guanidinio o amidinio
+      const ns = ady[i].filter((j) => at[j].el === 'N');
+      if (ns.length >= 3) g.push({ c: centroide([at[i], ...ns.map((j) => at[j])]), signo: +1, ref: at[i] });
+    }
+    if ((at[i].el === 'S' || at[i].el === 'P') && ady[i].filter((j) => at[j].el === 'O').length >= 3)
+      g.push({ c: centroide([at[i], ...ady[i].filter((j) => at[j].el === 'O').map((j) => at[j])]), signo: -1, ref: at[i] });
+    if (at[i].el === 'N') {
+      const pes = ady[i].filter((j) => at[j].el !== 'H');
+      const hs = ady[i].filter((j) => at[j].el === 'H');
+      if (pes.length >= 4 || (pes.length === 1 && hs.length >= 3)) g.push({ c: { ...at[i] }, signo: +1, ref: at[i] });
+    }
+  }
+  return g;
+}
+
+function donantes(at, ady) {       // heteroátomo con hidrógeno polar colgado
+  const d = [];
+  at.forEach((a, i) => {
+    if (!['N', 'O', 'S'].includes(a.el)) return;
+    for (const j of ady[i]) if (at[j].el === 'H') d.push({ D: i, H: j });
+  });
+  return d;
+}
+
+const etiqueta = (a) => `${a.res}${a.num}${a.cad ? ' ' + a.cad : ''}`;
+
+function analizar(rec, lig) {
+  const adyR = null;               // el receptor no necesita conectividad completa
+  const adyL = conectar(lig);
+  const out = [];
+
+  // caja alrededor del ligando: recorta el receptor a lo que puede tocar
+  const lim = 6.5;
+  const bb = ['x', 'y', 'z'].map((k) => [Math.min(...lig.map((a) => a[k])) - lim, Math.max(...lig.map((a) => a[k])) + lim]);
+  const cerca = [];
+  rec.forEach((a, i) => {
+    if (a.x > bb[0][0] && a.x < bb[0][1] && a.y > bb[1][0] && a.y < bb[1][1] && a.z > bb[2][0] && a.z < bb[2][1])
+      cerca.push(i);
+  });
+  // hidrógenos del receptor, atados a su pesado más cercano
+  const hRec = new Map();
+  for (const i of cerca) {
+    if (rec[i].el !== 'H') continue;
+    let mejor = -1, dm = 1.3;
+    for (const j of cerca) if (rec[j].el !== 'H' && dist(rec[i], rec[j]) < dm) { dm = dist(rec[i], rec[j]); mejor = j; }
+    if (mejor >= 0) { if (!hRec.has(mejor)) hRec.set(mejor, []); hRec.get(mejor).push(i); }
+  }
+
+  // ── puentes de hidrógeno ──
+  const donL = donantes(lig, adyL);
+  for (const { D, H } of donL) {
+    for (const j of cerca) {
+      if (!ACEPTORES.has(rec[j].t)) continue;
+      const dDA = dist(lig[D], rec[j]), dHA = dist(lig[H], rec[j]);
+      const ang = anguloEn(lig[D], lig[H], rec[j]);
+      if (dDA <= 3.5 && dHA <= 2.6 && ang >= 130)
+        out.push({ tipo: 'puente H', residuo: etiqueta(rec[j]), atRes: rec[j].nombre, atLig: lig[D].nombre || lig[D].el,
+          d: dDA, ang, rol: 'ligando dona', a: lig[D], b: rec[j] });
+    }
+  }
+  for (const [Di, Hs] of hRec) {
+    for (const H of Hs) {
+      for (let k = 0; k < lig.length; k++) {
+        if (!ACEPTORES.has(lig[k].t)) continue;
+        const dDA = dist(rec[Di], lig[k]), dHA = dist(rec[H], lig[k]);
+        const ang = anguloEn(rec[Di], rec[H], lig[k]);
+        if (dDA <= 3.5 && dHA <= 2.6 && ang >= 130)
+          out.push({ tipo: 'puente H', residuo: etiqueta(rec[Di]), atRes: rec[Di].nombre, atLig: lig[k].nombre || lig[k].el,
+            d: dDA, ang, rol: 'receptor dona', a: lig[k], b: rec[Di] });
+      }
+    }
+  }
+
+  // ── hidrofóbicas: carbono contra carbono, uno por residuo ──
+  const apolar = (a, ady, todos) => a.el === 'C' && !ady.some((j) => ['N', 'O'].includes(todos[j].el));
+  const mejoresH = new Map();
+  for (let k = 0; k < lig.length; k++) {
+    if (!apolar(lig[k], adyL[k], lig)) continue;
+    for (const j of cerca) {
+      if (rec[j].el !== 'C') continue;
+      const vecinos = cerca.filter((m) => m !== j && dist(rec[j], rec[m]) < 1.8);
+      if (vecinos.some((m) => ['N', 'O'].includes(rec[m].el))) continue;
+      const d = dist(lig[k], rec[j]);
+      if (d > 4.0) continue;
+      const key = etiqueta(rec[j]);
+      if (!mejoresH.has(key) || mejoresH.get(key).d > d)
+        mejoresH.set(key, { tipo: 'hidrofóbica', residuo: key, atRes: rec[j].nombre, atLig: lig[k].nombre || lig[k].el,
+          d, ang: null, rol: '', a: lig[k], b: rec[j] });
+    }
+  }
+  out.push(...mejoresH.values());
+
+  // ── π–π ──
+  const anL = anillosLigando(lig, adyL), anR = anillosReceptor(rec.filter((a, i) => cerca.includes(i)));
+  for (const al of anL) for (const ar of anR) {
+    const d = dist(al.c, ar.c); if (d > 5.5) continue;
+    let ang = Math.acos(Math.max(-1, Math.min(1, Math.abs(punto(al.n, ar.n))))) * 180 / Math.PI;
+    const v = resta(ar.c, al.c);
+    const desp = Math.min(norma(v) * Math.sin(Math.acos(Math.min(1, Math.abs(punto(v, al.n)) / (norma(v) || 1)))),
+                          norma(v) * Math.sin(Math.acos(Math.min(1, Math.abs(punto(v, ar.n)) / (norma(v) || 1)))));
+    const paralela = ang < 30 && desp <= 2.0, enT = ang > 50 && desp <= 3.0;
+    if (paralela || enT)
+      out.push({ tipo: 'π–π', residuo: etiqueta(ar.res), atRes: 'anillo', atLig: 'anillo',
+        d, ang, rol: paralela ? 'paralela' : 'en T', a: al.c, b: ar.c });
+  }
+
+  // ── halógenos ──
+  for (let k = 0; k < lig.length; k++) {
+    if (!['Cl', 'Br', 'I'].includes(lig[k].el)) continue;
+    const c = adyL[k].find((j) => lig[j].el === 'C'); if (c === undefined) continue;
+    for (const j of cerca) {
+      if (!['N', 'O'].includes(rec[j].el)) continue;
+      const d = dist(lig[k], rec[j]); if (d > 4.0) continue;
+      const ang = anguloEn(lig[c], lig[k], rec[j]);
+      if (ang >= 140)
+        out.push({ tipo: 'halógeno', residuo: etiqueta(rec[j]), atRes: rec[j].nombre, atLig: lig[k].el,
+          d, ang, rol: '', a: lig[k], b: rec[j] });
+    }
+  }
+
+  // ── puentes salinos ──
+  const cR = cargasReceptor(cerca.map((i) => rec[i])), cL = cargasLigando(lig, adyL);
+  for (const gl of cL) for (const gr of cR) {
+    if (gl.signo === gr.signo) continue;
+    const d = dist(gl.c, gr.c); if (d > 5.0) continue;
+    out.push({ tipo: 'puente salino', residuo: etiqueta(gr.ref), atRes: gr.ref.nombre, atLig: gl.ref.nombre || gl.ref.el,
+      d, ang: null, rol: gl.signo < 0 ? 'ligando aniónico' : 'ligando catiónico', a: gl.c, b: gr.c });
+  }
+
+  const orden = { 'puente H': 0, 'puente salino': 1, 'π–π': 2, 'halógeno': 3, 'hidrofóbica': 4 };
+  out.sort((p, q) => (orden[p.tipo] - orden[q.tipo]) || (p.d - q.d));
+  return out;
+}
+
+// ── dibujo ──
+function aPDB(txt, comoLigando) {
+  const out = [];
+  for (const l of txt.split('\n')) {
+    if (!/^(ATOM|HETATM)/.test(l)) continue;
+    const t = l.slice(77, 79).trim();
+    const el = (TIPO_ELEM[t.toUpperCase()] || t.slice(0, 1) || 'C').toUpperCase();
+    let b = l.slice(0, 66).padEnd(76, ' ');
+    if (comoLigando) b = 'HETATM' + b.slice(6, 17) + 'LIG' + b.slice(20);
+    out.push(b + (el.length === 1 ? ' ' + el : el.slice(0, 2)));
+  }
+  return out.join('\n') + '\nEND\n';
+}
+
+function pintarComplejo() {
+  const i = +$('poseSel').value;
+  const pose = posesC[i]; if (!pose || !receptorTxt) return;
+  const t0 = performance.now();
+  const rec = leerPDBQT(receptorTxt), lig = leerPDBQT(pose.lineas.join('\n'));
+  interActual = analizar(rec, lig);
+
+  if (!visorC) visorC = $3Dmol.createViewer($('visorComplejo'), { backgroundColor: 'white' });
+  visorC.removeAllModels(); visorC.removeAllShapes(); visorC.removeAllLabels(); visorC.removeAllSurfaces();
+  visorC.addModel(aPDB(receptorTxt), 'pdb');
+  visorC.addModel(aPDB(pose.lineas.join('\n'), true), 'pdb');
+
+  const residuos = [...new Set(interActual.map((x) => parseInt(x.residuo.replace(/^[A-Z]{3}/, ''))))];
+  const cinta = verCinta ? { cartoon: { color: '#a9bcc8', opacity: 0.92 } } : {};
+  visorC.setStyle({ model: 0 }, cinta);
+  visorC.setStyle({ model: 0, resi: residuos },
+    { ...cinta, stick: { radius: 0.11, colorscheme: 'whiteCarbon' } });
+  visorC.setStyle({ model: 1 }, { stick: { radius: 0.19, colorscheme: CARBONO_LIG } });
+  if (verSup)
+    visorC.addSurface($3Dmol.SurfaceType.VDW, { opacity: 0.55, color: '#d8d5cc' }, { model: 0, resi: residuos });
+
+  for (const it of interActual) {
+    visorC.addCylinder({ start: { x: it.a.x, y: it.a.y, z: it.a.z }, end: { x: it.b.x, y: it.b.y, z: it.b.z },
+      radius: it.tipo === 'hidrofóbica' ? 0.035 : 0.055, dashed: true, fromCap: 1, toCap: 1,
+      color: COLOR_INT[it.tipo] });
+    if (verDist && it.tipo !== 'hidrofóbica')
+      visorC.addLabel(it.d.toFixed(2) + ' Å',
+        { position: { x: (it.a.x + it.b.x) / 2, y: (it.a.y + it.b.y) / 2, z: (it.a.z + it.b.z) / 2 },
+          fontSize: 10, fontColor: '#17150f', backgroundColor: '#f0ece2', backgroundOpacity: 0.85,
+          borderThickness: 1, borderColor: COLOR_INT[it.tipo], inFront: true });
+  }
+  visorC.zoomTo({ model: 1 });
+  visorC.zoom(0.55);
+  visorC.render();
+
+  $('sinComplejo').hidden = true;
+  $('leyenda').hidden = false;
+  $('leyenda').innerHTML = Object.entries(COLOR_INT).map(([k, c]) => {
+    const n = interActual.filter((x) => x.tipo === k).length;
+    return `<span class="it" style="opacity:${n ? 1 : .35}"><span class="mu" style="border-color:${c}"></span>${k} (${n})</span>`;
+  }).join('');
+  $('pieComplejo').textContent = `pose ${i + 1} · ${lig.filter((a) => a.el !== 'H').length} átomos pesados · ${interActual.length} interacciones · ${((performance.now() - t0) / 1000).toFixed(1)} s`;
+  pintarTablaInter();
+  poseRenderizada = i;
+}
+
+function pintarTablaInter() {
+  if (!interActual.length) {
+    $('tablaInter').innerHTML = '<p class="vacio">No se detectó ninguna interacción con estos criterios.</p>';
+    return;
+  }
+  $('tablaInter').innerHTML = '<div class="desborde"><table><thead><tr>' +
+    '<th>Tipo</th><th>Residuo</th><th>Átomo rec.</th><th>Átomo lig.</th><th>d (Å)</th><th>Áng. (°)</th><th>Nota</th>' +
+    '</tr></thead><tbody>' + interActual.map((x) =>
+      `<tr><td><span class="tipo"><i style="background:${COLOR_INT[x.tipo]}"></i>${x.tipo}</span></td>` +
+      `<td>${x.residuo}</td><td>${x.atRes}</td><td>${x.atLig}</td>` +
+      `<td>${x.d.toFixed(2)}</td><td>${x.ang === null ? '—' : x.ang.toFixed(0)}</td><td>${x.rol || '—'}</td></tr>`
+    ).join('') + '</tbody></table></div>';
+}
+
+function csvInter() {
+  const cab = 'tipo,residuo,atomo_receptor,atomo_ligando,distancia_A,angulo_grados,nota';
+  return [cab, ...interActual.map((x) =>
+    [x.tipo, x.residuo, x.atRes, x.atLig, x.d.toFixed(3), x.ang === null ? '' : x.ang.toFixed(1), x.rol].join(','))].join('\n');
+}
+
+function cargarPoses(txt, origen) {
+  posesC = separarPoses(txt);
+  if (!posesC.length) { cEstado('Ese archivo no tiene poses legibles.', true); return; }
+  $('poseSel').innerHTML = posesC.map((p, i) =>
+    `<option value="${i}">Pose ${i + 1}${p.dg !== null ? ` — ${p.dg.toFixed(2)} kcal/mol` : ''}</option>`).join('');
+  poseRenderizada = -1;
+  cEstado(`${posesC.length} pose${posesC.length > 1 ? 's' : ''} ${origen}.`);
+}
+
+async function mostrarComplejo() {
+  if (!posesC.length && ultimaPose) cargarPoses(ultimaPose, 'del último docking');
+  if (!posesC.length) { cEstado('Todavía no hay poses.'); return; }
+  if (!receptorTxt) {
+    try { receptorTxt = await (await fetch($('receptor').value || 'datos/receptor-proteasa-hiv-4LL3.pdbqt')).text(); }
+    catch { cEstado('No se pudo cargar el receptor.', true); return; }
+  }
+  if (poseRenderizada !== +$('poseSel').value) { cEstado('Midiendo la pose…'); setTimeout(() => { pintarComplejo(); cEstado('Listo.'); }, 10); }
+}
+
+$('poseSel').addEventListener('change', () => { cEstado('Midiendo la pose…'); setTimeout(() => { pintarComplejo(); cEstado('Listo.'); }, 10); });
+$('vSuperficie').addEventListener('click', () => {
+  verSup = !verSup; $('vSuperficie').classList.toggle('activa', verSup);
+  if (posesC.length) pintarComplejo();
+});
+$('vDistancias').addEventListener('click', () => {
+  verDist = !verDist; $('vDistancias').classList.toggle('activa', verDist);
+  if (posesC.length) pintarComplejo();
+});
+$('vCinta').addEventListener('click', () => {
+  verCinta = !verCinta; $('vCinta').classList.toggle('activa', verCinta);
+  if (posesC.length) pintarComplejo();
+});
+$('encuadrarC').addEventListener('click', () => { if (visorC) { visorC.zoomTo({ model: 1 }); visorC.zoom(0.55); visorC.render(); } });
+$('poseArchivo').addEventListener('change', async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  cargarPoses(await f.text(), `de "${f.name}"`);
+  mostrarComplejo();
+});
+$('copiarInter').addEventListener('click', async () => {
+  if (!interActual.length) { cEstado('No hay interacciones que copiar.', true); return; }
+  await navigator.clipboard.writeText(csvInter()); cEstado('CSV copiado.');
+});
+$('bajarInter').addEventListener('click', () => {
+  if (!interActual.length) { cEstado('No hay interacciones que descargar.', true); return; }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csvInter()], { type: 'text/csv' }));
+  a.download = 'interacciones.csv'; a.click(); URL.revokeObjectURL(a.href);
+});
+window.__complejo = () => ({ poses: posesC.length, inter: interActual });
+
 
 pintarSerie();
 

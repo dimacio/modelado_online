@@ -1,0 +1,144 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8">
+<title>Paletas</title>
+<link href="https://fonts.googleapis.com/css2?family=Silkscreen&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:26px;background:#5a5650;font:14px Tahoma,Verdana,sans-serif}
+.rejilla{display:grid;grid-template-columns:repeat(2,780px);gap:26px;justify-content:center}
+.ficha{background:#fff;border:3px solid #15130f}
+.ficha > header{padding:11px 14px;background:#15130f;color:#fdfef0;display:flex;align-items:baseline;gap:12px}
+.ficha > header b{font:700 .82rem 'Silkscreen',monospace;text-transform:uppercase;letter-spacing:.04em}
+.ficha > header span{font:.76rem 'IBM Plex Mono',monospace;color:#b8b3a8}
+.tiras{display:flex;height:26px}
+.tiras i{flex:1}
+
+/* ───────── maqueta genérica, sin texturas ni biseles ───────── */
+.app{padding:16px;font:13px Tahoma,Verdana,sans-serif}
+.app h1{font:700 1rem 'Silkscreen',monospace;margin:0 0 3px;text-transform:uppercase;letter-spacing:.03em}
+.app .sub{font-size:.76rem;margin:0 0 14px;line-height:1.4}
+.tabs{display:flex;gap:4px;margin-bottom:-2px;position:relative;z-index:2}
+.tabs b{font:700 .58rem 'Silkscreen',monospace;text-transform:uppercase;padding:7px 12px;border:2px solid;cursor:default}
+.cuerpo{border:2px solid;padding:13px;display:flex;flex-direction:column;gap:11px}
+.panel{border:2px solid;padding:11px}
+.panel h2{font:700 .6rem 'Silkscreen',monospace;text-transform:uppercase;margin:-11px -11px 11px;padding:6px 10px;letter-spacing:.03em}
+.lienzo{height:132px;position:relative;border:2px solid;display:grid;place-items:center}
+.herr{display:flex;gap:7px;align-items:center;flex-wrap:wrap;padding:7px 9px;border:2px solid;margin-top:9px}
+.herr .rot{font:700 .52rem 'Silkscreen',monospace;text-transform:uppercase}
+.herr input{width:44px;font:11px 'IBM Plex Mono',monospace;padding:3px 5px;border:2px solid}
+.bt{font:700 .54rem 'Silkscreen',monospace;text-transform:uppercase;padding:6px 9px;border:2px solid;cursor:default}
+.bt.pri{display:block;width:100%;font-size:.7rem;padding:9px;text-align:center}
+.dos{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+table{border-collapse:collapse;width:100%;font:11px 'IBM Plex Mono',monospace}
+th{font:700 .5rem 'Silkscreen',monospace;text-transform:uppercase;text-align:left;padding:4px 6px}
+td{padding:3px 6px}
+.ley{display:flex;gap:11px;flex-wrap:wrap;padding:7px 9px;border:2px solid;align-items:center}
+.ley span{display:flex;align-items:center;gap:5px;font:700 .5rem 'Silkscreen',monospace;text-transform:uppercase}
+.ley i{width:17px;border-top:3px dashed}
+.pt{width:8px;height:8px;display:inline-block;border:1px solid #15130f}
+</style></head><body>
+<div class="rejilla" id="r"></div>
+<script>
+const MOL = `<svg width="150" height="92" viewBox="0 0 150 92">
+ <g fill="none" stroke="#1a1a1a" stroke-width="2.1" stroke-linecap="round">
+  <path d="M30 56 L48 44 L68 54 L66 76 L44 79 Z"/><path d="M68 54 L89 44"/>
+  <path d="M89 44 L108 54 L108 74 L89 84 L70 74"/><path d="M93 47 L105 55"/><path d="M105 71 L93 79"/>
+  <path d="M48 44 L46 22"/><path d="M52 44 L50 22"/><path d="M30 56 L12 46"/>
+ </g>
+ <circle cx="46" cy="20" r="5.4" fill="#fff" stroke="#1a1a1a" stroke-width="2"/>
+ <circle cx="12" cy="46" r="5.4" fill="#fff" stroke="#1a1a1a" stroke-width="2"/>
+ <circle cx="66" cy="76" r="5.4" fill="#fff" stroke="#1a1a1a" stroke-width="2"/>
+</svg>`;
+
+const OPC = [
+ { n:'1 · Papel', d:'hoja crema sobre hueso, todo con filete de tinta',
+   tiras:['#e7e0de','#fdfef0','#cecaa9','#684d5e','#63b4db','#261e25'],
+   v:{ fondo:'#e7e0de', panel:'#fdfef0', borde:'#261e25', texto:'#261e25', tenue:'#6b635c',
+       cab:'#cecaa9', cabTxt:'#261e25', tabOff:'#d8d2cb', tabOn:'#fdfef0', tabTxt:'#261e25',
+       pri:'#684d5e', priTxt:'#fdfef0', sec:'#e7e0de', secTxt:'#261e25', lienzo:'#ffffff',
+       barra:'#e7e0de', dato:'#503344' } },
+
+ { n:'2 · Cielo', d:'el celeste manda; paneles blancos sobre azul grisado',
+   tiras:['#bfc9ca','#eeecec','#63b4db','#92b7c5','#684d5e','#211b21'],
+   v:{ fondo:'#bfc9ca', panel:'#eeecec', borde:'#211b21', texto:'#211b21', tenue:'#5c6567',
+       cab:'#63b4db', cabTxt:'#10242c', tabOff:'#a9b6b8', tabOn:'#eeecec', tabTxt:'#211b21',
+       pri:'#684d5e', priTxt:'#fdfef0', sec:'#d6dedd', secTxt:'#211b21', lienzo:'#ffffff',
+       barra:'#d6dedd', dato:'#2a6e90' } },
+
+ { n:'3 · Pizarra', d:'interfaz oscura; el lienzo blanco pasa a ser una hoja apoyada',
+   tiras:['#323542','#474e5b','#cecaa9','#5e7975','#8e5a46','#fdfef0'],
+   v:{ fondo:'#262a35', panel:'#323542', borde:'#191c24', texto:'#eceadf', tenue:'#9aa0ad',
+       cab:'#474e5b', cabTxt:'#cecaa9', tabOff:'#2c303b', tabOn:'#474e5b', tabTxt:'#eceadf',
+       pri:'#8e5a46', priTxt:'#fdfef0', sec:'#3d4250', secTxt:'#eceadf', lienzo:'#ffffff',
+       barra:'#2c303b', dato:'#cecaa9' } },
+
+ { n:'4 · Duna', d:'arena y terracota; el contraste más bajo, para sesiones largas',
+   tiras:['#cecaa9','#fdfef0','#8e7b71','#8e5a46','#586869','#261e25'],
+   v:{ fondo:'#cecaa9', panel:'#fdfef0', borde:'#5b5347', texto:'#2b251f', tenue:'#6f6557',
+       cab:'#e0dcc0', cabTxt:'#3a332a', tabOff:'#bdb998', tabOn:'#fdfef0', tabTxt:'#2b251f',
+       pri:'#8e5a46', priTxt:'#fdfef0', sec:'#e5e1c8', secTxt:'#2b251f', lienzo:'#ffffff',
+       barra:'#f0eddc', dato:'#586869' } },
+
+ { n:'5 · Dos tintas', d:'blanco y negro; sólo celeste (interactivo) y ciruela (acción pesada)',
+   tiras:['#fdfef0','#ffffff','#63b4db','#684d5e','#d8d5cc','#15130f'],
+   v:{ fondo:'#f3f1e8', panel:'#ffffff', borde:'#15130f', texto:'#15130f', tenue:'#6a665e',
+       cab:'#ffffff', cabTxt:'#15130f', tabOff:'#e2dfd5', tabOn:'#ffffff', tabTxt:'#15130f',
+       pri:'#684d5e', priTxt:'#ffffff', sec:'#ffffff', secTxt:'#15130f', lienzo:'#ffffff',
+       barra:'#ffffff', dato:'#2a7fa8' } },
+];
+
+const INT = [['puente H','#2f7fa8'],['hidrofóbica','#a8894a'],['π–π','#3f7a63'],['halógeno','#684d5e'],['salino','#a0523a']];
+
+document.getElementById('r').innerHTML = OPC.map((o) => {
+ const v = o.v;
+ return `<div class="ficha">
+  <header><b>${o.n}</b><span>${o.d}</span></header>
+  <div class="tiras">${o.tiras.map((c)=>`<i style="background:${c}"></i>`).join('')}</div>
+  <div class="app" style="background:${v.fondo};color:${v.texto}">
+    <h1>Descriptores moleculares en el navegador</h1>
+    <p class="sub" style="color:${v.tenue}">Dibujo a geometría 3D, minimización GFN2-xTB, descriptores y docking. Todo corre en esta pestaña.</p>
+    <div class="tabs">
+      ${['Descriptores','Docking','Complejo'].map((t,i)=>`<b style="background:${i===0?v.tabOn:v.tabOff};color:${v.tabTxt};border-color:${v.borde};border-bottom-color:${i===0?v.tabOn:v.borde}">${t}</b>`).join('')}
+    </div>
+    <div class="cuerpo" style="border-color:${v.borde};background:${v.fondo}">
+      <div class="panel" style="border-color:${v.borde};background:${v.panel}">
+        <h2 style="background:${v.cab};color:${v.cabTxt};border-bottom:2px solid ${v.borde}">Dibujo 2D · Geometría 3D</h2>
+        <div class="lienzo" style="border-color:${v.borde};background:${v.lienzo}">${MOL}</div>
+        <div class="herr" style="border-color:${v.borde};background:${v.barra}">
+          <span class="rot" style="color:${v.tenue}">Átomo</span>
+          <span style="font:600 12px 'IBM Plex Mono',monospace;color:${v.dato}">C14</span>
+          <span class="bt" style="background:${v.sec};color:${v.secTxt};border-color:${v.borde}">Distorsionar</span>
+          <span class="rot" style="color:${v.tenue}">pasos</span>
+          <input value="150" style="border-color:${v.borde};background:#ffffff;color:#261e25">
+          <span class="bt" style="background:${v.pri};color:${v.priTxt};border-color:${v.borde}">Minimizar</span>
+        </div>
+        <div class="ley" style="border-color:${v.borde};background:${v.barra};margin-top:9px">
+          ${INT.map(([t,c])=>`<span style="color:${v.tenue}"><i style="border-color:${c}"></i>${t}</span>`).join('')}
+        </div>
+      </div>
+      <div class="dos">
+        <div class="panel" style="border-color:${v.borde};background:${v.panel}">
+          <h2 style="background:${v.cab};color:${v.cabTxt};border-bottom:2px solid ${v.borde}">Resultado</h2>
+          <span class="bt pri" style="background:${v.dato};color:#fff;border-color:${v.borde}">Calcular</span>
+          <table style="margin-top:9px;color:${v.texto}">
+            <tr><td style="color:${v.tenue}">HOMO</td><td style="text-align:right;color:${v.dato}">−9,784 eV</td></tr>
+            <tr><td style="color:${v.tenue}">LUMO</td><td style="text-align:right;color:${v.dato}">−1,402 eV</td></tr>
+            <tr><td style="color:${v.tenue}">µ</td><td style="text-align:right;color:${v.dato}">5,41 D</td></tr>
+            <tr><td style="color:${v.tenue}">logP</td><td style="text-align:right;color:${v.dato}">3,12</td></tr>
+          </table>
+        </div>
+        <div class="panel" style="border-color:${v.borde};background:${v.panel}">
+          <h2 style="background:${v.cab};color:${v.cabTxt};border-bottom:2px solid ${v.borde}">Interacciones</h2>
+          <table style="color:${v.texto}">
+            <thead><tr style="color:${v.tenue}"><th>Tipo</th><th>Residuo</th><th style="text-align:right">d (Å)</th></tr></thead>
+            <tbody>
+            ${[['halógeno','#684d5e','ARG8','3,82'],['hidrofóbica','#a8894a','ILE50','3,57'],['hidrofóbica','#a8894a','VAL82','3,66'],['puente H','#2f7fa8','ASP25','2,94']]
+              .map(([t,c,r,d])=>`<tr><td><span class="pt" style="background:${c}"></span> ${t}</td><td>${r}</td><td style="text-align:right">${d}</td></tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+ </div>`;
+}).join('');
+</script></body></html>
