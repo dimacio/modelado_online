@@ -131,8 +131,7 @@ th{font:700 .56rem var(--pix);text-transform:uppercase;color:var(--tenue);backgr
 .vistas button.activa{background:var(--celeste);color:var(--tinta)}
 .pie3d{margin-left:auto;font:.72rem var(--mono);color:var(--tenue)}
 #caja3d{position:relative}
-#visor3d{width:100%;height:100%;cursor:grab;touch-action:none}
-#visor3d.agarrando{cursor:grabbing}
+#visor3d{width:100%;height:100%;cursor:grab}
 .taller{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;padding:9px 11px;
   background:var(--papel);border:2px solid var(--tinta)}
 .taller .grupo{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
@@ -239,7 +238,8 @@ a:focus-visible{outline:2px solid var(--celeste);outline-offset:2px}
             <ol class="pasos">
               <li><b>Dibujá</b> la estructura acá mismo, o pegá un SMILES en el campo de abajo.</li>
               <li><b>Calculá</b> y salen la geometría 3D y nueve descriptores. En <em>Geometría 3D</em> podés
-                  arrastrar un átomo con el mouse y apretar <em>Minimizar</em> para verla reacomodarse.</li>
+                  <em>Distorsionar</em> la molécula y apretar <em>Minimizar</em> para verla reacomodarse
+                  átomo por átomo.</li>
               <li><b>Dockeá</b> contra un receptor en la pestaña <em>Docking</em>, con AutoDock Vina.</li>
               <li><b>Mirá el complejo</b>: la pose dentro de la proteína y sus interacciones, medidas y listadas.</li>
             </ol>
@@ -257,9 +257,7 @@ a:focus-visible{outline:2px solid var(--celeste);outline-offset:2px}
       </div>
       <div class="taller" id="taller" hidden>
         <div class="grupo">
-          <span class="rot">Átomo</span>
-          <span class="dato" id="selAtomo">ninguno</span>
-          <span class="ayuda">arrastralo para moverlo · con Shift rotás la vista</span>
+          <span class="ayuda">Arrastrá para rotar, rueda para acercar.</span>
         </div>
         <div class="grupo">
           <button id="distorsionar">Distorsionar</button>
@@ -421,12 +419,11 @@ a:focus-visible{outline:2px solid var(--celeste);outline-offset:2px}
               <li><em>Calcular</em> genera un confórmero 3D, lo relaja con MMFF94, corre GFN2-xTB y saca los
                   descriptores. Cada cálculo se agrega a la tabla <em>Serie</em>, que se baja como CSV para
                   armar el QSAR.</li>
-              <li>En <em>Geometría 3D</em>: arrastrá el fondo para rotar, rueda para acercar, y arrastrá un
-                  átomo para moverlo — también con el dedo, en una tablet. Si justo tenés un átomo debajo del
-                  cursor y querés rotar igual, mantené <em>Shift</em> mientras arrastrás.
-                  <em>Distorsionar</em> corre todos los átomos al azar la cantidad de ångström que pongas al lado.</li>
-              <li>La cámara no se reacomoda sola cuando los átomos se mueven, para que no te salte la vista
-                  mientras arrastrás: <em>Encuadrar</em> vuelve a centrar cuando lo necesites.</li>
+              <li>En <em>Geometría 3D</em>: arrastrá para rotar y usá la rueda para acercar.
+                  <em>Distorsionar</em> corre todos los átomos al azar la cantidad de ångström que pongas al
+                  lado; es la forma de sacar a la molécula de su mínimo y después verla volver.</li>
+              <li>La cámara no se reacomoda sola mientras los átomos se mueven, para que la vista no salte
+                  durante la minimización: <em>Encuadrar</em> vuelve a centrar cuando lo necesites.</li>
               <li><em>Minimizar</em> relaja la geometría con GFN2 y actualiza dipolo, HOMO, LUMO y gap. Los
                   descriptores 2D (masa, clogP, refractividad, TPSA, superficie) no cambian, porque no dependen
                   de la geometría.</li>
@@ -521,7 +518,7 @@ a:focus-visible{outline:2px solid var(--celeste);outline-offset:2px}
               <dt>La primera vez la página se recarga sola</dt>
               <dd>Es el service worker tomando control. Pasa una sola vez.</dd>
               <dt>"SCF did not converge" al minimizar</dt>
-              <dd>Suele venir de una distorsión demasiado grande o de un átomo arrastrado encima de otro.
+              <dd>Suele venir de una distorsión demasiado grande, que deja dos átomos casi encima.
                 Bajá la amplitud o volvé a calcular desde el SMILES.</dd>
               <dt>El docking tarda muchísimo</dt>
               <dd>Bajá <em>núcleos</em> a 1 o 2 y <em>exhaustiveness</em> a 4 mientras probás.</dd>
@@ -561,7 +558,7 @@ const $ = (id) => document.getElementById(id);
 const estado = (t, err) => { const e = $('estado'); e.textContent = t; e.classList.toggle('error', !!err); };
 let RDKit, OCC, serie = [], ultimaGeometria = null, visor = null;
 // geometria viva del taller: numeros atomicos, etiquetas y coordenadas en angstrom
-let geo = null, atomoSel = null;
+let geo = null;
 // el modulo WASM lanza punteros a excepciones de C++; esto los vuelve legibles
 function leerError(e) {
   if (typeof e === 'number' && OCC && typeof OCC.getExceptionMessage === 'function') {
@@ -570,7 +567,6 @@ function leerError(e) {
   return e && e.message ? e.message : String(e);
 }
 window.__geo = () => geo;   // para inspección y pruebas
-window.__bajoCursor = (x,y) => atomoBajoCursor(x,y);
 
 $('ejemplos').innerHTML = EJEMPLOS.map(([n, s], i) =>
   `<button data-i="${i}">${n}</button>`).join('');
@@ -687,7 +683,7 @@ async function calcular(smiles) {
     geo.Z.push(conf.getAtomicNo(i)); geo.et.push(conf.getAtomLabel(i));
     geo.xyz.push(conf.getAtomX(i), conf.getAtomY(i), conf.getAtomZ(i));
   }
-  atomoSel = null; $('selAtomo').textContent = 'ninguno'; yaEncuadrado = false;
+  yaEncuadrado = false;
   t.geometria = performance.now() - t0;
 
   t0 = performance.now();
@@ -800,7 +796,6 @@ $('limpiar').addEventListener('click', () => { serie = []; pintarSerie(); estado
 
 // ───────────────────────── visor de geometría 3D ─────────────────────────
 let yaEncuadrado = false;
-// un solo lugar crea el visor, para que el arrastre quede siempre enganchado
 // el encuadre sólo vale si el lienzo 3D está a la vista: si está oculto mide cero
 // y zoomTo deja la molécula fuera de cuadro para siempre
 function encuadrarSiHaceFalta() {
@@ -811,7 +806,6 @@ function encuadrarSiHaceFalta() {
 function asegurarVisor() {
   if (visor) return;
   visor = $3Dmol.createViewer($('visor3d'), { backgroundColor: 'white' });
-  armarArrastre();
 }
 
 function dibujarCuadro(xyz, pie) {
@@ -873,65 +867,7 @@ function geoAXyz(g, titulo) {
 function pintarGeo(pie) {
   if (!geo) return;
   dibujarCuadro(geoAXyz(geo), pie);
-  if (atomoSel !== null && visor) {
-    const p = geo.xyz.slice(atomoSel*3, atomoSel*3+3);
-    visor.addSphere({ center: { x: p[0], y: p[1], z: p[2] }, radius: 0.40, color: '#2a7fa8', opacity: 0.42 });
-    visor.render();
-  }
   $('taller').hidden = false;
-}
-
-// Arrastre de átomos. 3Dmol no lo trae, así que se arma con sus dos proyecciones:
-// modelToScreen dice qué átomo está bajo el cursor y screenOffsetToModel convierte
-// el movimiento del mouse en un desplazamiento en el plano de la cámara.
-function atomoBajoCursor(px, py) {
-  if (!geo || !visor) return null;
-  let mejor = null, dmin = 20;            // radio de agarre, en píxeles
-  for (let i = 0; i < geo.Z.length; i++) {
-    const s = visor.modelToScreen({ x: geo.xyz[i*3], y: geo.xyz[i*3+1], z: geo.xyz[i*3+2] });
-    const d = Math.hypot(s.x - px, s.y - py);
-    if (d < dmin) { dmin = d; mejor = i; }
-  }
-  return mejor;
-}
-
-function armarArrastre() {
-  const caja = $('visor3d');
-  let arrastrando = false, ultimo = null, idPuntero = null;
-  const pos = (e) => { const r = caja.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
-
-  caja.addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'mouse' && e.button !== 0) return;
-    if (e.shiftKey) return;               // con shift se rota aunque el cursor esté sobre un átomo
-    const [x, y] = pos(e);
-    const i = atomoBajoCursor(x, y);
-    if (i === null) return;               // sin átomo debajo, que 3Dmol rote como siempre
-    atomoSel = i; arrastrando = true; ultimo = [x, y]; idPuntero = e.pointerId;
-    try { caja.setPointerCapture(e.pointerId); } catch { /* da igual */ }
-    $('selAtomo').textContent = `${geo.et[i]}${i + 1}`;
-    caja.classList.add('agarrando');
-    e.stopPropagation(); e.preventDefault();
-    pintarGeo();
-  }, true);
-
-  caja.addEventListener('pointermove', (e) => {
-    if (!arrastrando || e.pointerId !== idPuntero) return;
-    const [x, y] = pos(e);
-    const d = visor.screenOffsetToModel(x - ultimo[0], y - ultimo[1]);
-    ultimo = [x, y];
-    geo.xyz[atomoSel*3] += d.x; geo.xyz[atomoSel*3+1] += d.y; geo.xyz[atomoSel*3+2] += d.z;
-    geo.nivel = 'movida a mano';
-    pintarGeo(`${geo.Z.length} átomos · ${geo.et[atomoSel]}${atomoSel+1} movido a mano`);
-    e.stopPropagation(); e.preventDefault();
-  }, true);
-
-  const soltar = (e) => {
-    if (!arrastrando || (e && e.pointerId !== idPuntero)) return;
-    arrastrando = false; idPuntero = null; caja.classList.remove('agarrando');
-    estado(`${geo.et[atomoSel]}${atomoSel+1} movido. Minimizá para ver cómo se reacomoda.`);
-  };
-  caja.addEventListener('pointerup', soltar, true);
-  caja.addEventListener('pointercancel', soltar, true);
 }
 
 $('encuadrar').onclick = () => { if (visor) { visor.zoomTo(); visor.render(); } };
