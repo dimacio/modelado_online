@@ -1,0 +1,1 @@
+PoseΔGdock (kcal/mol)RMSD inf.RMSD sup.1-12.5010.0000.0002-9.9851.7115.673

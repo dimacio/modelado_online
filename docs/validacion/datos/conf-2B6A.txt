@@ -1,0 +1,14 @@
+# Caja de docking para 2B6A, equivalente a la del TP de la catedra.
+# El tamano, exhaustiveness y energy_range son los del conf.txt original.
+# El CENTRO es distinto: el 2B6Adock.pdbqt de la catedra esta en otro marco de
+# coordenadas (su centro cae a 150 A de la proteina tal como la deposita el PDB).
+# Aca el centro es el centroide del ligando cristalografico T50 (TBZ1), que es
+# el sitio NNRTI, o sea el mismo sitio que apuntaba la caja original.
+center_x = 145.876
+center_y = -24.851
+center_z = 74.796
+size_x = 31
+size_y = 31
+size_z = 31
+exhaustiveness = 10
+energy_range = 3
