@@ -1,5 +1,11 @@
-# GamaTools — planteo de diseño
+# Banco de análisis de docking — planteo de diseño
 
+> **Sobre los nombres.** El programa educativo, el que está publicado, se llama **QuEtool**
+> (herramienta de química educativa). **BetaTools** queda reservado para el canal de pruebas:
+> donde se estrena cada funcionalidad nueva antes de que pase a QuEtool. La herramienta de
+> investigación que describe este documento **todavía no tiene nombre**; acá se la llama
+> "el banco de análisis".
+>
 > Documento de diseño, no especificación. Fija el problema, el modelo de datos y los
 > límites; las tareas concretas salen después. Escrito el 2026-11-09, antes de escribir
 > una línea de código, sobre datos reales del repo `dimacio/quimioteca-gaussian`.
@@ -22,7 +28,7 @@ escritas a mano.
 
 Es una foto excelente de una corrida. No es un instrumento.
 
-**GamaTools es ese mismo análisis convertido en instrumento**: le das los archivos que
+**El banco de análisis es ese mismo análisis convertido en instrumento**: le das los archivos que
 tengas, los lee en el navegador y analiza. La quimioteca de cisteín-proteasas es el caso
 de prueba, no el contenido.
 
@@ -33,17 +39,17 @@ descriptores calculados por otro lado y produce las figuras y las tablas con las
 decide qué compuesto sigue.
 
 **No es** un reemplazo de AutoDock ni de Gaussian. No corre DFT, no corre dinámica, no
-re-dockea. Esa parte sigue donde está, en neocortex con GPU. GamaTools empieza donde
+re-dockea. Esa parte sigue donde está, en neocortex con GPU. El banco empieza donde
 termina el cómputo pesado.
 
-**No es BetaTools con más botones.** BetaTools enseña: una molécula por vez, todo explicado,
-sin preparación previa. GamaTools asume que sabés lo que estás mirando y trabaja con cientos
+**No es QuEtool con más botones.** QuEtool enseña: una molécula por vez, todo explicado,
+sin preparación previa. El banco asume que sabés lo que estás mirando y trabaja con cientos
 de corridas a la vez. Son dos públicos y dos ritmos distintos.
 
-## 3. Relación con BetaTools
+## 3. Relación con QuEtool
 
 Viven en el mismo repo, en `gama/`, y comparten el núcleo. Lo que se comparte es lo que ya
-está escrito y probado en BetaTools:
+está escrito y probado en QuEtool:
 
 - el lector de PDBQT (átomos, tipos AutoDock, residuos),
 - el análisis geométrico de interacciones (puente de hidrógeno con ángulo D–H···A, contacto
@@ -84,7 +90,7 @@ campo de fuerzas. La condición tiene que ser un registro con etiqueta libre, no
 de objeto.
 
 **El sitio de referencia se define, no se hornea.** En el artefacto las coordenadas están en
-`META.sitios`. En GamaTools el sitio de un receptor se fija cargando un ligando de referencia
+`META.sitios`. En el banco el sitio de un receptor se fija cargando un ligando de referencia
 —el cristalográfico— y tomando su centroide, o escribiendo las coordenadas a mano. Esto no es
 cosmética: tu propio `CLAUDE.md` registra que la caja enfocada de 7QCH está sobre A5I, **a
 30 Å de la Cys111 catalítica**, o sea en un sitio de interacción proteína-proteína y no en el
@@ -110,8 +116,8 @@ Verificado contra los archivos reales del repo, no contra la documentación de l
 | Formato | Qué se saca | Estado |
 |---|---|---|
 | `.dlg` de AutoDock-GPU / AutoDock4 | clusters (rango, ΔG mínimo y medio, población) del `CLUSTERING HISTOGRAM`; RMSD al cluster y a la referencia de la `RMSD TABLE`; las 50 poses de los bloques `DOCKED: MODEL` | formato confirmado en los cuatro `.dlg` de controles; las líneas `DOCKED: ATOM` son PDBQT con 8 caracteres de prefijo, así que reusan el lector que ya existe |
-| `.pdbqt` multi-modelo | poses y ΔG de `REMARK VINA RESULT` | ya lo lee BetaTools |
-| `.pdbqt` / `.pdb` de receptor | átomos, residuos, hidrógenos polares | ya lo lee BetaTools |
+| `.pdbqt` multi-modelo | poses y ΔG de `REMARK VINA RESULT` | ya lo lee QuEtool |
+| `.pdbqt` / `.pdb` de receptor | átomos, residuos, hidrógenos polares | ya lo lee QuEtool |
 | `.csv` cualquiera con columna de id | atributos del ligando | trivial, pero hay que resolver separador y coma decimal |
 
 Lo que **no** está en el repo son los `.dlg` de la campaña: `.gitignore` los excluye junto a
@@ -130,7 +136,7 @@ una conclusión.
 ligando, distancia al sitio. Ordenable y filtrable por condición, exportable a CSV con la
 procedencia de cada número. Contesta "¿qué compuestos miro primero?".
 
-**Complejo.** El visor 3D con el mapa de interacciones, igual que en BetaTools pero sobre el
+**Complejo.** El visor 3D con el mapa de interacciones, igual que en QuEtool pero sobre el
 receptor y la pose que elijas de lo que cargaste. Contesta "¿por qué este compuesto puntúa
 así?".
 
@@ -165,10 +171,10 @@ Donde el artefacto delegó en Python, conviene medir antes de prometer.
 ## 8. Trazabilidad
 
 La carpeta es compartida y pasa por varias herramientas distintas, así que todo número que
-GamaTools muestre tiene que poder rastrearse hasta el archivo del que salió. En concreto:
+el banco muestre tiene que poder rastrearse hasta el archivo del que salió. En concreto:
 cada corrida guarda el nombre del archivo que la produjo, cada CSV exportado lleva esa
 columna, y los criterios geométricos van escritos en la propia pantalla como ya están en
-BetaTools. Nadie debería tener que leer el código para saber qué es un puente de hidrógeno
+QuEtool. Nadie debería tener que leer el código para saber qué es un puente de hidrógeno
 acá adentro.
 
 ## 9. Decisiones abiertas
@@ -180,7 +186,11 @@ acá adentro.
    y que el de menor energía es una pose con 1/50. El valor por defecto importa.
 3. **Las cajas `_null`.** Son controles negativos y la mitad de las condiciones del ranking.
    ¿Vista aparte, o una columna más del ranking para comparar contra ellas?
-4. **Dónde se publica.** BetaTools está en GitHub Pages. GamaTools maneja datos de una
+4. **El canal BetaTools.** El esquema de nombres implica una segunda publicación del
+   programa educativo —la de prueba— además de la estable. Técnicamente es barato (otra
+   carpeta en el mismo repo, otra URL de Pages), pero hay que decidir si la cátedra ve las
+   dos o sólo la estable.
+5. **Dónde se publica.** QuEtool está en GitHub Pages. El banco maneja datos de una
    campaña sin publicar: ¿queda sólo local, o publicado pero vacío, cargando los archivos
    cada quien en su máquina? (Técnicamente lo segundo es seguro —nada sale del navegador—
    pero es una decisión tuya, no mía.)
