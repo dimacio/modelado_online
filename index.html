@@ -55,8 +55,8 @@
       TPSA, superficie). La tabla de la serie se descarga como CSV y se recarga para
       seguir otro día.</div>
     <div class="paso"><b>Docking.</b> AutoDock Vina 1.2.3 compilado a WebAssembly, contra
-      el receptor 2B6A del TP (caja precargada) o cualquier .pdbqt propio. Se descargan
-      las poses y la salida completa con los parámetros.</div>
+      el receptor 2B6A precargado, con su caja lista, o cualquier .pdbqt propio. Se
+      descargan las poses y la salida completa con los parámetros.</div>
     <div class="paso"><b>Complejo.</b> La pose dentro del bolsillo y su mapa de
       interacciones (puentes de hidrógeno, contactos hidrofóbicos, π–π, halógenos,
       puentes salinos) con umbrales explícitos, exportable como CSV.</div>
@@ -72,17 +72,17 @@
       <li>Docking: <b>Webina</b>, AutoDock Vina 1.2.3 compilado a WebAssembly.</li>
       <li>Visor 3D: <b>3Dmol.js</b>.</li>
     </ul>
-    <p>Todo libre y auditado contra el TP: la validación completa (redocking de control,
+    <p>Todo libre y auditado: la validación completa (redocking de control,
     descriptores contra RDKit de línea de comandos, QSAR, serie de docking, interacciones
     y regresión) está documentada paso a paso en
     <a href="docs/validacion/00-protocolo.md">docs/validacion/</a>.</p>
   </div>
 
-  <h2>Para completar el TP de forma remota</h2>
+  <h2>Para trabajar a distancia y retomar después</h2>
   <div class="tarjeta">
     <ul>
-      <li>Elegí la estructura en <b>Estructura de la serie del TP</b>: los diez NNRTI, más
-      T50 de control y EFZ-Br de diseño.</li>
+      <li>Elegí la estructura en el selector precargado: los diez NNRTI, más T50 de
+      control y EFZ-Br de diseño.</li>
       <li>Guardá en cada etapa: CSV de descriptores, PDBQT de poses, salida de Vina y CSV
       de interacciones. Los archivos son el estado: se recargan y seguís donde dejaste.</li>
       <li>Si el docking no aparece (navegador sin service workers, ventana privada),
