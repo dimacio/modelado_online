@@ -1,0 +1,189 @@
+[
+  {
+    "nombre": "GFA",
+    "smiles": "O=C(COc1ccc(Cl)cc1C(=O)c1ccccc1)Nc1ccccc1",
+    "estado": "Listo en 7.30 s.",
+    "celdas": [
+      "365.82g/mol",
+      "4.589",
+      "101.89",
+      "55.4Å²",
+      "155.9Å²",
+      "6.04D",
+      "-10.155eV",
+      "-8.465eV",
+      "1.690eV"
+    ],
+    "tiempos": "Geometría 3D + MMFF945.68 sGFN2-xTB1.44 sDescriptores RDKit0.19 sEnergía MMFF9488.80 kcal/molÁtomos · SCF42 · convergió"
+  },
+  {
+    "nombre": "EFZ",
+    "smiles": "O=C1Nc2ccc(Cl)cc2[C@@](C#CC2CC2)(C(F)(F)F)O1",
+    "estado": "Listo en 5.85 s.",
+    "celdas": [
+      "315.68g/mol",
+      "4.073",
+      "69.79",
+      "38.3Å²",
+      "123.0Å²",
+      "5.48D",
+      "-11.167eV",
+      "-7.621eV",
+      "3.546eV"
+    ],
+    "tiempos": "Geometría 3D + MMFF944.92 sGFN2-xTB0.92 sDescriptores RDKit0.01 sEnergía MMFF9414.27 kcal/molÁtomos · SCF30 · convergió"
+  },
+  {
+    "nombre": "TBO",
+    "smiles": "CC(C)=CCN1Cc2c(Cl)ccc3[nH]c(=S)n(c23)C[C@@H]1C",
+    "estado": "Listo en 5.77 s.",
+    "celdas": [
+      "321.88g/mol",
+      "4.523",
+      "91.44",
+      "24.0Å²",
+      "134.8Å²",
+      "3.24D",
+      "-9.445eV",
+      "-7.216eV",
+      "2.229eV"
+    ],
+    "tiempos": "Geometría 3D + MMFF944.54 sGFN2-xTB1.22 sDescriptores RDKit0.00 sEnergía MMFF9423.60 kcal/molÁtomos · SCF41 · convergió"
+  },
+  {
+    "nombre": "TNK",
+    "smiles": "CC(C)c1c(Cc2ccccc2)n(COCc2ccccc2)c(=O)[nH]c1=O",
+    "estado": "Listo en 8.37 s.",
+    "celdas": [
+      "364.45g/mol",
+      "3.425",
+      "105.89",
+      "64.1Å²",
+      "157.8Å²",
+      "5.79D",
+      "-10.720eV",
+      "-7.185eV",
+      "3.535eV"
+    ],
+    "tiempos": "Geometría 3D + MMFF947.03 sGFN2-xTB1.33 sDescriptores RDKit0.01 sEnergía MMFF94-43.18 kcal/molÁtomos · SCF51 · convergió"
+  },
+  {
+    "nombre": "NVP",
+    "smiles": "Cc1ccnc2c1NC(=O)c1cccnc1N2C1CC1",
+    "estado": "Listo en 4.42 s.",
+    "celdas": [
+      "266.30g/mol",
+      "2.651",
+      "76.33",
+      "58.1Å²",
+      "116.2Å²",
+      "2.58D",
+      "-9.980eV",
+      "-7.557eV",
+      "2.423eV"
+    ],
+    "tiempos": "Geometría 3D + MMFF943.71 sGFN2-xTB0.71 sDescriptores RDKit0.01 sEnergía MMFF9464.15 kcal/molÁtomos · SCF34 · convergió"
+  },
+  {
+    "nombre": "HBQ",
+    "smiles": "CC[C@H]1C(=O)Nc2ccc(F)cc2N1C(=O)OC(C)C",
+    "estado": "Listo en 4.88 s.",
+    "celdas": [
+      "280.30g/mol",
+      "2.908",
+      "73.20",
+      "58.6Å²",
+      "116.3Å²",
+      "1.95D",
+      "-10.553eV",
+      "-7.186eV",
+      "3.367eV"
+    ],
+    "tiempos": "Geometría 3D + MMFF944.31 sGFN2-xTB0.56 sDescriptores RDKit0.01 sEnergía MMFF94-2.28 kcal/molÁtomos · SCF37 · convergió"
+  },
+  {
+    "nombre": "QNO47b",
+    "smiles": "COC(=O)N[C@@H]1C(=O)Nc2ccc(Cl)cc2[C@]1(C#CC1CC1)C(F)(F)F",
+    "estado": "Listo en 5.75 s.",
+    "celdas": [
+      "386.76g/mol",
+      "3.230",
+      "87.64",
+      "67.4Å²",
+      "151.8Å²",
+      "5.92D",
+      "-11.077eV",
+      "-7.651eV",
+      "3.426eV"
+    ],
+    "tiempos": "Geometría 3D + MMFF944.80 sGFN2-xTB0.94 sDescriptores RDKit0.00 sEnergía MMFF94-7.49 kcal/molÁtomos · SCF40 · convergió"
+  },
+  {
+    "nombre": "U05",
+    "smiles": "CCN1c2cc([N+](=O)[O-])ccc2N(C)C(=O)c2cccnc21",
+    "estado": "Listo en 3.63 s.",
+    "celdas": [
+      "298.30g/mol",
+      "2.738",
+      "82.75",
+      "79.6Å²",
+      "126.5Å²",
+      "4.12D",
+      "-10.403eV",
+      "-8.941eV",
+      "1.462eV"
+    ],
+    "tiempos": "Geometría 3D + MMFF943.17 sGFN2-xTB0.45 sDescriptores RDKit0.00 sEnergía MMFF9490.15 kcal/molÁtomos · SCF36 · convergió"
+  },
+  {
+    "nombre": "ZZE",
+    "smiles": "CCc1nn(CCO)c(CC)c1Oc1cc(C#N)cc(C#N)c1",
+    "estado": "Listo en 3.78 s.",
+    "celdas": [
+      "310.36g/mol",
+      "2.536",
+      "84.01",
+      "94.9Å²",
+      "134.7Å²",
+      "4.63D",
+      "-10.589eV",
+      "-8.281eV",
+      "2.307eV"
+    ],
+    "tiempos": "Geometría 3D + MMFF943.25 sGFN2-xTB0.53 sDescriptores RDKit0.00 sEnergía MMFF9449.38 kcal/molÁtomos · SCF41 · convergió"
+  },
+  {
+    "nombre": "QNO47c",
+    "smiles": "CC(=O)N[C@@H]1C(=O)Nc2ccc(Cl)cc2[C@]1(C#CC1CC1)C(F)(F)F",
+    "estado": "Listo en 3.80 s.",
+    "celdas": [
+      "370.76g/mol",
+      "3.010",
+      "85.92",
+      "58.2Å²",
+      "146.7Å²",
+      "6.79D",
+      "-10.979eV",
+      "-7.656eV",
+      "3.323eV"
+    ],
+    "tiempos": "Geometría 3D + MMFF943.15 sGFN2-xTB0.65 sDescriptores RDKit0.00 sEnergía MMFF9438.52 kcal/molÁtomos · SCF39 · convergió"
+  },
+  {
+    "nombre": "EFZ-Br",
+    "smiles": "O=C1Nc2ccc(Br)cc2[C@@](C#CC2CC2)(C(F)(F)F)O1",
+    "estado": "Listo en 2.09 s.",
+    "celdas": [
+      "360.13g/mol",
+      "4.182",
+      "72.48",
+      "38.3Å²",
+      "126.5Å²",
+      "4.03D",
+      "-11.272eV",
+      "-7.798eV",
+      "3.474eV"
+    ],
+    "tiempos": "Geometría 3D + MMFF941.69 sGFN2-xTB0.40 sDescriptores RDKit0.00 sEnergía MMFF9415.37 kcal/molÁtomos · SCF30 · convergió"
+  }
+]

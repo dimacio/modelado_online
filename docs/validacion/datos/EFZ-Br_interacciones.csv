@@ -1,0 +1,7 @@
+tipo,residuo,atomo_receptor,atomo_ligando,distancia_A,angulo_grados,nota
+hidrofóbica,TYR318 A,CE1,C,3.119,,
+hidrofóbica,VAL106 A,CG1,C,3.310,,
+hidrofóbica,TYR181 A,CB,C,3.369,,
+hidrofóbica,LEU100 A,CD1,C,3.695,,
+hidrofóbica,PHE227 A,CD1,C,3.911,,
+hidrofóbica,LYS103 A,CB,C,3.916,,

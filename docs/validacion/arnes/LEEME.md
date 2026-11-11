@@ -17,6 +17,23 @@ para leer y reproducir.
 4. `python -I analizar_c4.py` evalúa el criterio C4 (centroide de cada pose contra el del
    T50 cristalográfico) y escribe `resultados_c4.csv`.
 
+## Scripts de los pasos C2, C3 y C5 (archivados)
+
+- `c2-app.mjs` — maneja la app real (pestaña Descriptores) vía CDP sobre Edge headless;
+  necesita un `http.server` sirviendo `app/index.html` y Edge con
+  `--headless=new --remote-debugging-port=9222`.
+- `gen_smiles_local.py` — SMILES canónicos de los SDF con RDKit CLI.
+- `c2-comparar.py` — contraste descriptores de la app vs RDKit CLI.
+- `c3-qsar.py` — modelos de 1–3 variables con R², Fisher y Student (scipy) y matriz de
+  ortogonalidad, Partes A y B del TP 1.
+- `c5-interacciones.py` — port exacto de `analizar()` de la pestaña Complejo; lee el
+  receptor y las poses `*_webina.pdbqt` y produce los CSV por ligando y la tabla de
+  doble entrada.
+
+Los scripts apuntan a rutas absolutas del equipo donde corrieron (Drive y
+`C:\Users\dimas\c2-work`); para reproducirlos, ajustar `PROJ`/`REC_PATH`/`AQUI` según
+`MATERIALES_DIR` o una copia local.
+
 ## Parches locales al motor (sólo en la copia de trabajo)
 
 Para correr fuera del navegador, la copia de trabajo parchea `vina.1.0.5.js` en dos

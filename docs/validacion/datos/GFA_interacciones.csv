@@ -1,0 +1,13 @@
+tipo,residuo,atomo_receptor,atomo_ligando,distancia_A,angulo_grados,nota
+pi-pi,TRP229 A,anillo,anillo,4.888,77.1,en T
+pi-pi,TRP229 A,anillo,anillo,5.141,76.7,en T
+hidrofóbica,GLU138 B,CG,C,3.218,,
+hidrofóbica,VAL179 A,CG1,C,3.278,,
+hidrofóbica,TYR181 A,CB,C,3.298,,
+hidrofóbica,VAL106 A,CG2,C,3.320,,
+hidrofóbica,TYR188 A,CD2,C,3.540,,
+hidrofóbica,LEU100 A,CD1,C,3.554,,
+hidrofóbica,TRP229 A,CD2,C,3.624,,
+hidrofóbica,PHE227 A,CD1,C,3.851,,
+hidrofóbica,LEU234 A,CD2,C,3.855,,
+hidrofóbica,TYR318 A,CE1,C,3.864,,

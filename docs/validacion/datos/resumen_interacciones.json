@@ -1,0 +1,323 @@
+{
+  "EFZ-Br": {
+    "n": 6,
+    "por_tipo": {
+      "hidrofóbica": [
+        "LEU100 A",
+        "LYS103 A",
+        "PHE227 A",
+        "TYR181 A",
+        "TYR318 A",
+        "VAL106 A"
+      ]
+    },
+    "residuos": [
+      "LEU100 A",
+      "LYS103 A",
+      "PHE227 A",
+      "TYR181 A",
+      "TYR318 A",
+      "VAL106 A"
+    ]
+  },
+  "EFZ": {
+    "n": 8,
+    "por_tipo": {
+      "puente H": [
+        "LYS101 A"
+      ],
+      "pi-pi": [
+        "TYR318 A"
+      ],
+      "hidrofóbica": [
+        "LEU234 A",
+        "TRP229 A",
+        "TYR181 A",
+        "TYR188 A",
+        "TYR318 A",
+        "VAL106 A"
+      ]
+    },
+    "residuos": [
+      "LEU234 A",
+      "LYS101 A",
+      "TRP229 A",
+      "TYR181 A",
+      "TYR188 A",
+      "TYR318 A",
+      "VAL106 A"
+    ]
+  },
+  "GFA": {
+    "n": 12,
+    "por_tipo": {
+      "pi-pi": [
+        "TRP229 A"
+      ],
+      "hidrofóbica": [
+        "GLU138 B",
+        "LEU100 A",
+        "LEU234 A",
+        "PHE227 A",
+        "TRP229 A",
+        "TYR181 A",
+        "TYR188 A",
+        "TYR318 A",
+        "VAL106 A",
+        "VAL179 A"
+      ]
+    },
+    "residuos": [
+      "GLU138 B",
+      "LEU100 A",
+      "LEU234 A",
+      "PHE227 A",
+      "TRP229 A",
+      "TYR181 A",
+      "TYR188 A",
+      "TYR318 A",
+      "VAL106 A",
+      "VAL179 A"
+    ]
+  },
+  "HBQ": {
+    "n": 8,
+    "por_tipo": {
+      "pi-pi": [
+        "TYR318 A"
+      ],
+      "hidrofóbica": [
+        "LEU100 A",
+        "LYS103 A",
+        "TRP229 A",
+        "TYR181 A",
+        "TYR188 A",
+        "TYR318 A",
+        "VAL106 A"
+      ]
+    },
+    "residuos": [
+      "LEU100 A",
+      "LYS103 A",
+      "TRP229 A",
+      "TYR181 A",
+      "TYR188 A",
+      "TYR318 A",
+      "VAL106 A"
+    ]
+  },
+  "NVP": {
+    "n": 6,
+    "por_tipo": {
+      "hidrofóbica": [
+        "LEU100 A",
+        "LYS103 A",
+        "TYR181 A",
+        "TYR318 A",
+        "VAL106 A",
+        "VAL179 A"
+      ]
+    },
+    "residuos": [
+      "LEU100 A",
+      "LYS103 A",
+      "TYR181 A",
+      "TYR318 A",
+      "VAL106 A",
+      "VAL179 A"
+    ]
+  },
+  "QNO47b": {
+    "n": 8,
+    "por_tipo": {
+      "halógeno": [
+        "VAL179 A"
+      ],
+      "hidrofóbica": [
+        "LEU100 A",
+        "LYS103 A",
+        "PRO95 A",
+        "TRP229 A",
+        "TYR181 A",
+        "TYR188 A",
+        "VAL106 A"
+      ]
+    },
+    "residuos": [
+      "LEU100 A",
+      "LYS103 A",
+      "PRO95 A",
+      "TRP229 A",
+      "TYR181 A",
+      "TYR188 A",
+      "VAL106 A",
+      "VAL179 A"
+    ]
+  },
+  "QNO47c": {
+    "n": 7,
+    "por_tipo": {
+      "hidrofóbica": [
+        "GLU138 B",
+        "LEU100 A",
+        "LEU234 A",
+        "TRP229 A",
+        "TYR181 A",
+        "TYR188 A",
+        "VAL106 A"
+      ]
+    },
+    "residuos": [
+      "GLU138 B",
+      "LEU100 A",
+      "LEU234 A",
+      "TRP229 A",
+      "TYR181 A",
+      "TYR188 A",
+      "VAL106 A"
+    ]
+  },
+  "T50": {
+    "n": 12,
+    "por_tipo": {
+      "pi-pi": [
+        "TRP229 A",
+        "TYR318 A"
+      ],
+      "hidrofóbica": [
+        "LEU100 A",
+        "LEU234 A",
+        "LYS103 A",
+        "TRP229 A",
+        "TYR181 A",
+        "TYR188 A",
+        "TYR318 A",
+        "VAL106 A",
+        "VAL179 A"
+      ]
+    },
+    "residuos": [
+      "LEU100 A",
+      "LEU234 A",
+      "LYS103 A",
+      "TRP229 A",
+      "TYR181 A",
+      "TYR188 A",
+      "TYR318 A",
+      "VAL106 A",
+      "VAL179 A"
+    ]
+  },
+  "TBO": {
+    "n": 8,
+    "por_tipo": {
+      "puente H": [
+        "LYS101 A"
+      ],
+      "hidrofóbica": [
+        "LEU100 A",
+        "LEU234 A",
+        "LYS103 A",
+        "PHE227 A",
+        "TRP229 A",
+        "TYR181 A",
+        "TYR188 A"
+      ]
+    },
+    "residuos": [
+      "LEU100 A",
+      "LEU234 A",
+      "LYS101 A",
+      "LYS103 A",
+      "PHE227 A",
+      "TRP229 A",
+      "TYR181 A",
+      "TYR188 A"
+    ]
+  },
+  "TNK": {
+    "n": 10,
+    "por_tipo": {
+      "pi-pi": [
+        "TYR318 A"
+      ],
+      "hidrofóbica": [
+        "LEU100 A",
+        "LEU234 A",
+        "LYS103 A",
+        "PHE227 A",
+        "TRP229 A",
+        "TYR181 A",
+        "TYR188 A",
+        "TYR318 A",
+        "VAL106 A"
+      ]
+    },
+    "residuos": [
+      "LEU100 A",
+      "LEU234 A",
+      "LYS103 A",
+      "PHE227 A",
+      "TRP229 A",
+      "TYR181 A",
+      "TYR188 A",
+      "TYR318 A",
+      "VAL106 A"
+    ]
+  },
+  "U05": {
+    "n": 10,
+    "por_tipo": {
+      "puente H": [
+        "LYS103 A"
+      ],
+      "pi-pi": [
+        "TRP229 A"
+      ],
+      "hidrofóbica": [
+        "LEU100 A",
+        "LEU234 A",
+        "LYS103 A",
+        "PHE227 A",
+        "TRP229 A",
+        "TYR181 A",
+        "TYR188 A",
+        "VAL106 A"
+      ]
+    },
+    "residuos": [
+      "LEU100 A",
+      "LEU234 A",
+      "LYS103 A",
+      "PHE227 A",
+      "TRP229 A",
+      "TYR181 A",
+      "TYR188 A",
+      "VAL106 A"
+    ]
+  },
+  "ZZE": {
+    "n": 8,
+    "por_tipo": {
+      "pi-pi": [
+        "TRP229 A"
+      ],
+      "hidrofóbica": [
+        "LEU100 A",
+        "LEU234 A",
+        "TRP229 A",
+        "TYR188 A",
+        "TYR318 A",
+        "VAL106 A"
+      ]
+    },
+    "residuos": [
+      "LEU100 A",
+      "LEU234 A",
+      "TRP229 A",
+      "TYR188 A",
+      "TYR318 A",
+      "VAL106 A"
+    ]
+  }
+}

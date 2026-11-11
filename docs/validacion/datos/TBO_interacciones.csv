@@ -1,0 +1,9 @@
+tipo,residuo,atomo_receptor,atomo_ligando,distancia_A,angulo_grados,nota
+puente H,LYS101 A,O,N,2.724,160.6,ligando dona
+hidrofóbica,LEU234 A,CD2,C,3.048,,
+hidrofóbica,LEU100 A,CD1,C,3.502,,
+hidrofóbica,TRP229 A,CD2,C,3.566,,
+hidrofóbica,TYR188 A,CE2,C,3.603,,
+hidrofóbica,PHE227 A,CD1,C,3.618,,
+hidrofóbica,TYR181 A,CE2,C,3.694,,
+hidrofóbica,LYS103 A,CG,C,3.981,,

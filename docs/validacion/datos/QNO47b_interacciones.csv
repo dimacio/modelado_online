@@ -1,0 +1,9 @@
+tipo,residuo,atomo_receptor,atomo_ligando,distancia_A,angulo_grados,nota
+halógeno,VAL179 A,O,Cl,3.683,151.4,
+hidrofóbica,TRP229 A,CZ2,C,3.211,,
+hidrofóbica,TYR181 A,CE2,C,3.236,,
+hidrofóbica,TYR188 A,CD2,C,3.329,,
+hidrofóbica,LEU100 A,CD2,C,3.331,,
+hidrofóbica,PRO95 A,CB,C,3.334,,
+hidrofóbica,VAL106 A,CG2,C,3.604,,
+hidrofóbica,LYS103 A,CG,C,3.655,,

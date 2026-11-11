@@ -1,0 +1,9 @@
+tipo,residuo,atomo_receptor,atomo_ligando,distancia_A,angulo_grados,nota
+puente H,LYS101 A,O,N,3.185,171.6,ligando dona
+pi-pi,TYR318 A,anillo,anillo,4.980,54.9,en T
+hidrofóbica,TYR181 A,CD2,C,3.462,,
+hidrofóbica,TYR318 A,CE1,C,3.652,,
+hidrofóbica,VAL106 A,CG1,C,3.695,,
+hidrofóbica,TYR188 A,CD1,C,3.774,,
+hidrofóbica,LEU234 A,CD2,C,3.811,,
+hidrofóbica,TRP229 A,CD2,C,3.945,,

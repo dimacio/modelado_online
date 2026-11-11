@@ -1,0 +1,9 @@
+tipo,residuo,atomo_receptor,atomo_ligando,distancia_A,angulo_grados,nota
+pi-pi,TYR318 A,anillo,anillo,4.850,50.7,en T
+hidrofóbica,TYR188 A,CB,C,3.461,,
+hidrofóbica,LYS103 A,CG,C,3.503,,
+hidrofóbica,TRP229 A,CD2,C,3.629,,
+hidrofóbica,TYR181 A,CE2,C,3.638,,
+hidrofóbica,TYR318 A,CE1,C,3.780,,
+hidrofóbica,VAL106 A,CG1,C,3.830,,
+hidrofóbica,LEU100 A,CD1,C,3.905,,

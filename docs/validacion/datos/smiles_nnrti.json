@@ -1,0 +1,13 @@
+{
+  "GFA": "O=C(COc1ccc(Cl)cc1C(=O)c1ccccc1)Nc1ccccc1",
+  "EFZ": "O=C1Nc2ccc(Cl)cc2[C@@](C#CC2CC2)(C(F)(F)F)O1",
+  "TBO": "CC(C)=CCN1Cc2c(Cl)ccc3[nH]c(=S)n(c23)C[C@@H]1C",
+  "TNK": "CC(C)c1c(Cc2ccccc2)n(COCc2ccccc2)c(=O)[nH]c1=O",
+  "NVP": "Cc1ccnc2c1NC(=O)c1cccnc1N2C1CC1",
+  "HBQ": "CC[C@H]1C(=O)Nc2ccc(F)cc2N1C(=O)OC(C)C",
+  "QNO47b": "COC(=O)N[C@@H]1C(=O)Nc2ccc(Cl)cc2[C@]1(C#CC1CC1)C(F)(F)F",
+  "U05": "CCN1c2cc([N+](=O)[O-])ccc2N(C)C(=O)c2cccnc21",
+  "ZZE": "CCc1nn(CCO)c(CC)c1Oc1cc(C#N)cc(C#N)c1",
+  "QNO47c": "CC(=O)N[C@@H]1C(=O)Nc2ccc(Cl)cc2[C@]1(C#CC1CC1)C(F)(F)F",
+  "EFZ-Br": "O=C1Nc2ccc(Br)cc2[C@@](C#CC2CC2)(C(F)(F)F)O1"
+}
