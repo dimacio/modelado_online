@@ -15,10 +15,15 @@ cargar varios archivos a la vez.
    `DOCKED: `; sacado el prefijo son PDBQT común, así que el resto de la pestaña —el
    dibujo y la medición de interacciones— no se tocó. De cada `MODEL` sale el número de
    corrida y su ΔG.
-2. **Clusters leídos, no recalculados.** Salen de la `RMSD TABLE` que escribe el propio
-   AutoDock con su tolerancia de rms. La app no reagrupa nada: muestra lo que decidió el
-   programa que hizo el docking. De ahí salen ΔG del mejor miembro, ΔG medio, población y
-   la RMSD de cada corrida contra el jefe de su cluster.
+2. **Clusters reagrupados a 1,0 Å.** El `.dlg` trae el agrupamiento de AutoDock a **2,0 Å**,
+   que es su valor por omisión y es grueso: junta poses distinguibles e infla la población
+   del primer cluster. La pestaña reagrupa con el mismo algoritmo que AutoDock —ordenar por
+   energía, sembrar con la mejor pose libre, pegarle toda pose a ≤ tolerancia, con RMSD de
+   átomos pesados y sin realinear— pero a **1,0 Å**, que es el criterio del proyecto
+   `quimioteca-gaussian`. De ahí salen ΔG del mejor miembro, ΔG medio, población y la RMSD
+   de cada corrida contra el jefe de su cluster. De la `RMSD TABLE` del `.dlg` se usa sólo
+   la columna *Reference RMSD* (el RMSD contra el cristal), que es por corrida y no depende
+   del agrupamiento.
 3. **Tabla de clusters** con el histograma de población, al lado de la de interacciones.
    Un clic en una fila lleva a la mejor pose de ese cluster. Exporta CSV, y el cluster
    entero como PDBQT multi-modelo.
@@ -60,6 +65,7 @@ desparramadas —el caso del docking ciego— abre a toda la proteína.
 | C7.2 | Que el mapa de interacciones no haya cambiado | las once poses de C4 contra 2B6A, idénticas fila por fila a los CSV de C5 | **12/12 idénticos → ACEPTA** |
 | C7.3 | La pestaña en un navegador real | las 32 comprobaciones de `c7-complejo-navegador.py` | **32/32 → ACEPTA** |
 | C7.4 | RMSD al cristal y elección de cluster en los cuatro controles de redocking | reproducir la `RMSD TABLE` del `.dlg` y que el criterio elija el cluster correcto | **7/7 → ACEPTA** |
+| C7.5 | Que el agrupamiento sea el mismo que el del ranking del proyecto | nº de clusters, población del cluster elegido y su ΔG, iguales en los 1550 `.dlg` | **1550/1550 → ACEPTA** |
 
 Los datos de C7.1 son los 1553 `.dlg` de la campaña de `dimacio/quimioteca-gaussian`
 (`autodock/gpu/results/`, 20 condiciones: 6LU7, 6W63 y 7QCH/7LBR, cajas enfocada, ciega,
@@ -77,6 +83,22 @@ excepción. Corregido; el barrido pasó a 1553/1553.
 
 Vale como advertencia general: probar el lector con los dockings que salieron bien no
 alcanza, porque justamente los casos degenerados son los que traen los formatos raros.
+
+## Un bug encontrado en el pipeline del proyecto
+
+Para que los dos lados dieran el mismo número hubo que leer `collect_scores.py` de
+`quimioteca-gaussian`, y ahí apareció que **el filtro de hidrógenos nunca se activaba**:
+
+```python
+el = (b[76:79].strip() or ...).capitalize()   # 'HD' -> 'Hd'
+if el != "H":                                 # 'Hd' != 'H' -> el H entraba igual
+```
+
+Los tipos de átomo de AutoDock son `H` y `HD`, no `H` a secas, así que los hidrógenos
+polares entraban al RMSD del clustering, en contra de lo que dice el propio docstring
+(«átomos pesados»). Corregido allá; al regenerar el ranking cambian **233 de 1550 filas**
+de población y **35 de veredicto** de convergencia. Las dos puntas usan ahora la misma
+definición, y C7.5 lo verifica archivo por archivo.
 
 ## El caso que justifica pesar la población
 
@@ -111,6 +133,10 @@ node docs/validacion/arnes/c7-barrido-dlg.mjs beta/index.html <carpeta con los .
 
 # C7.2 — regresión del mapa de interacciones
 node docs/validacion/arnes/c7-regresion-c5.mjs beta/index.html docs/validacion/datos
+
+# C7.5 — el agrupamiento, contra el ranking del proyecto
+node docs/validacion/arnes/c7-contra-ranking.mjs beta/index.html \
+     <carpeta results/> <results/ranking.csv>
 
 # C7.4 — RMSD al cristal y criterio de cluster, contra los controles del proyecto
 node docs/validacion/arnes/c7-controles-cristal.mjs beta/index.html \

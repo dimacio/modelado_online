@@ -107,8 +107,11 @@ La pestaña muestra una pose dentro de la proteína y mide sus interacciones. La
 venir de tres lados: del docking que se acaba de correr, de un `.pdbqt` de Vina, o de un
 **`.dlg` de AutoDock 4 / AutoDock-GPU** corrido afuera —en una GPU, por ejemplo—.
 
-Del `.dlg` se leen además los **clusters**, tal como los agrupó AutoDock con su tolerancia de
-rms: la app no reagrupa nada. La tabla de clusters da, de cada uno, el ΔG del mejor miembro, el
+Del `.dlg` salen además los **clusters**. El archivo trae el agrupamiento de AutoDock a 2,0 Å
+—su valor por omisión—, que es grueso: junta poses distinguibles e infla la población del
+primer cluster. La pestaña reagrupa a **1,0 Å** con el mismo algoritmo (RMSD de átomos
+pesados, sin realinear), que es el criterio del proyecto de docking, para que la herramienta y
+el ranking hablen del mismo número. La tabla de clusters da, de cada uno, el ΔG del mejor miembro, el
 ΔG medio, cuántas corridas cayeron ahí y qué porcentaje del total son. Un clic en una fila lleva
 a la mejor pose de ese cluster.
 

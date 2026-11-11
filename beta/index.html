@@ -1338,6 +1338,46 @@ function separarPoses(txt) {
   return poses.filter((p) => p.lineas.some((l) => /^(ATOM|HETATM)/.test(l)));
 }
 
+// Tolerancia de reagrupamiento, en Å. El .dlg trae el clustering de AutoDock a 2,0 Å
+// —su valor por omisión—, que junta poses distinguibles e infla la población del primer
+// cluster. 1,0 Å es el criterio del proyecto, y es el que se usa acá.
+const RMSTOL = 1.0;
+
+// El clustering de AutoDock: ordenar por energía, sembrar con la mejor pose libre y
+// pegarle toda pose a <= tol. El RMSD es de átomos pesados y SIN realinear, porque las
+// poses ya están en el marco del receptor. Los hidrógenos polares (tipo HD) quedan
+// afuera: son los únicos que trae un PDBQT y su posición sigue a los pesados.
+function agrupar(poses, tol) {
+  const xyz = poses.map((p) => p.lineas.filter((l) => /^(ATOM|HETATM)/.test(l))
+    .filter((l) => !['H', 'HD'].includes((l.slice(77, 79).trim() || l.slice(12, 14).trim()).toUpperCase()))
+    .map((l) => [+l.slice(30, 38), +l.slice(38, 46), +l.slice(46, 54)]));
+  const orden = poses.map((_, i) => i).sort((a, b) => (poses[a].dg ?? 0) - (poses[b].dg ?? 0));
+  const rmsd = (a, b) => {
+    const A = xyz[a], B = xyz[b], n = Math.min(A.length, B.length);
+    if (!n) return Infinity;
+    let s = 0;
+    for (let k = 0; k < n; k++)
+      s += (A[k][0] - B[k][0]) ** 2 + (A[k][1] - B[k][1]) ** 2 + (A[k][2] - B[k][2]) ** 2;
+    return Math.sqrt(s / n);
+  };
+  const libre = new Set(orden);
+  const clusters = [];
+  for (const i of orden) {
+    if (!libre.has(i)) continue;
+    libre.delete(i);
+    const miembros = [i];
+    for (const j of [...libre]) if (rmsd(i, j) <= tol) { libre.delete(j); miembros.push(j); }
+    const rank = clusters.length + 1;
+    miembros.forEach((j, k) => {
+      poses[j].cluster = rank; poses[j].sub = k + 1; poses[j].rmsdCluster = rmsd(i, j);
+    });
+    const dgs = miembros.map((j) => poses[j].dg ?? 0);
+    clusters.push({ rank, n: miembros.length, runs: miembros.map((j) => poses[j].run),
+      mejor: Math.min(...dgs), media: dgs.reduce((a, b) => a + b, 0) / dgs.length });
+  }
+  return clusters;
+}
+
 // ── AutoDock 4 / AutoDock-GPU: el .dlg ──
 // Las líneas de coordenadas vienen con el prefijo "DOCKED: "; sacado el prefijo son PDBQT
 // común, así que el resto de la pestaña no cambia. Los clusters NO se recalculan acá: se
@@ -1384,9 +1424,12 @@ function leerDLG(txt) {
   if (act && act.lineas.some((l) => /^(ATOM|HETATM)/.test(l))) poses.push(act);
   const buenas = poses.filter((p) => p.lineas.some((l) => /^(ATOM|HETATM)/.test(l)));
 
-  // RMSD TABLE → rank | sub-rank | run | binding energy | cluster RMSD | reference RMSD
+  // De la RMSD TABLE sólo se usa la columna "Reference RMSD" (el RMSD contra el cristal,
+  // que AutoDock calcula por corrida y corrigiendo por simetría). El AGRUPAMIENTO no sale
+  // de ahí: el .dlg viene a 2,0 Å, que es la tolerancia por omisión de AutoDock y es
+  // gruesa —junta poses distinguibles e infla la población—, así que se reagrupa acá a
+  // RMSTOL, igual que el ranking del proyecto.
   const porRun = new Map(buenas.map((p) => [p.run, p]));
-  const cl = new Map();
   let enTabla = false;
   for (const l of lineas) {
     if (l.includes('RMSD TABLE')) { enTabla = true; continue; }
@@ -1394,19 +1437,11 @@ function leerDLG(txt) {
     // ojo: AutoDock escribe las energías positivas con signo "+" ("+0.42"), hay que aceptarlo
     const m = l.match(/^\s*(\d+)\s+(\d+)\s+(\d+)\s+([-+]?\d+\.\d+)\s+([-+]?\d+\.\d+)\s+([-+]?\d+\.\d+)/);
     if (!m) continue;
-    const rank = +m[1], run = +m[3], dg = +m[4];
-    const p = porRun.get(run);
-    if (p) { p.cluster = rank; p.sub = +m[2]; p.rmsdCluster = +m[5]; p.rmsdRef = +m[6]; if (p.dg === null) p.dg = dg; }
-    if (!cl.has(rank)) cl.set(rank, { rank, runs: [], dgs: [] });
-    cl.get(rank).runs.push(run); cl.get(rank).dgs.push(dg);
+    const p = porRun.get(+m[3]);
+    if (p) { p.rmsdRef = +m[6]; if (p.dg === null) p.dg = +m[4]; }
   }
-  const clusters = [...cl.values()].sort((a, b) => a.rank - b.rank).map((c) => ({
-    rank: c.rank, runs: c.runs, n: c.runs.length,
-    mejor: Math.min(...c.dgs),
-    media: c.dgs.reduce((s, x) => s + x, 0) / c.dgs.length,
-  }));
-  // presentar las poses en el orden del ranking de AutoDock, no en el de las corridas
-  if (clusters.length) buenas.sort((a, b) => (a.cluster - b.cluster) || (a.sub - b.sub));
+  const clusters = agrupar(buenas, RMSTOL);
+  buenas.sort((a, b) => (a.cluster - b.cluster) || (a.sub - b.sub));
   return { poses: buenas, clusters, meta };
 }
 
@@ -1937,11 +1972,13 @@ function pintarTablaClusters() {
         'uno reportaría; entre paréntesis, cuando difiere, la mejor de todo el cluster, que responde otra ' +
         'pregunta y siempre es más optimista. Un redocking de control acepta con <b>≤ 2 Å</b>.</p>'
       : '') +
-    (c.meta && c.meta.rmstol
-      ? `<p class="nota" style="margin:4px 0 0">Agrupados por AutoDock con tolerancia de <b>${c.meta.rmstol.toFixed(1)} Å</b>` +
+    (c.tipo === 'dlg'
+      ? `<p class="nota" style="margin:4px 0 0">Reagrupado a <b>${RMSTOL.toFixed(1)} Å</b>` +
         `${c.meta.receptor ? `, contra <b>${c.meta.receptor}</b>` : ''}. ` +
-        'Reagrupar con otra tolerancia da otro número de clusters: si comparás con una tabla hecha aparte, ' +
-        'fijate que sea la misma.</p>'
+        `El propio <code>.dlg</code> trae un agrupamiento a ${c.meta.rmstol ? c.meta.rmstol.toFixed(1) : '2,0'} Å, ` +
+        'que es el valor por omisión de AutoDock y es grueso: junta poses distinguibles e infla la población ' +
+        'del primer cluster. Acá se reagrupa con RMSD de átomos pesados, igual que el ranking del proyecto, ' +
+        'para que los dos lados hablen del mismo número.</p>'
       : '');
   for (const tr of caja.querySelectorAll('.filaCluster')) tr.addEventListener('click', () => {
     const x = c.clusters.find((y) => y.rank === +tr.dataset.rank);
