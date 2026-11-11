@@ -1,5 +1,5 @@
 // C7 — Barrido del lector de .dlg sobre una campaña entera de AutoDock-GPU.
-// Uso: node c7-barrido-dlg.mjs <ruta/app/index.html> <carpeta con .dlg>
+// Uso: node c7-barrido-dlg.mjs <ruta/beta/index.html> <carpeta con .dlg>
 // Extrae leerDLG/leerConjunto del propio index.html (no hay copia del codigo acá) y
 // verifica en cada archivo: que haya poses, que todas tengan dG, que la suma de los
 // clusters sea igual al numero de corridas y que cada cluster indexe a sus miembros.

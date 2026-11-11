@@ -361,16 +361,8 @@ a:focus-visible{outline:2px solid var(--celeste);outline-offset:2px}
   <div id="panel-complejo" hidden>
     <div class="tarjeta lienzo-grande">
       <div class="vistas">
-        <span class="rot" id="rotLig" style="font:700 .58rem var(--pix);text-transform:uppercase;color:var(--tenue)" hidden>Ligando</span>
-        <select id="ligSel" hidden></select>
         <span class="rot" style="font:700 .58rem var(--pix);text-transform:uppercase;color:var(--tenue)">Pose</span>
-        <button id="posePrev" title="Pose anterior">◀</button>
         <select id="poseSel"></select>
-        <button id="poseSig" title="Pose siguiente">▶</button>
-        <span class="rot" style="font:700 .58rem var(--pix);text-transform:uppercase;color:var(--tenue)">Ver</span>
-        <button id="mPose" class="activa">Pose</button>
-        <button id="mCluster" title="La pose elegida más el resto de su cluster en alambre">Cluster</button>
-        <button id="mRepres" title="La mejor pose de cada cluster, cada una de un color">Representantes</button>
         <button id="vCinta" class="activa">Cinta</button>
         <button id="vSuperficie">Superficie</button>
         <button id="vDistancias" class="activa">Distancias</button>
@@ -378,20 +370,12 @@ a:focus-visible{outline:2px solid var(--celeste);outline-offset:2px}
         <span class="pie3d" id="pieComplejo"></span>
       </div>
       <div class="lienzo" id="cajaComplejo"><div id="visorComplejo"></div>
-        <p class="vacio sinGeo" id="sinComplejo">Todavía no hay poses. Dockeá en la pestaña anterior, o cargá desde la tarjeta de abajo un <code>.pdbqt</code> de poses o un <code>.dlg</code> de AutoDock —con su receptor, si no es el de la pestaña Docking.</p>
+        <p class="vacio sinGeo" id="sinComplejo">Todavía no hay poses. Dockeá en la pestaña anterior, o cargá un <code>.pdbqt</code> de poses desde la tarjeta de abajo.</p>
       </div>
       <div class="taller leyenda" id="leyenda" hidden></div>
     </div>
 
     <div class="columnas-res">
-      <div class="tarjeta">
-        <h2>Clusters</h2>
-        <div id="tablaClusters"><p class="vacio">Un <code>.dlg</code> de AutoDock trae las corridas ya agrupadas por RMSD. Cargalo abajo y acá aparece el histograma de clusters; hacé clic en uno para ver su mejor pose.</p></div>
-        <div class="acciones" style="margin-top:12px">
-          <button id="bajarClusters">Descargar CSV de clusters</button>
-          <button id="bajarClusterPdb">Descargar el cluster como PDBQT</button>
-        </div>
-      </div>
       <div class="tarjeta">
         <h2>Interacciones</h2>
         <div id="tablaInter"><p class="vacio">Elegí una pose y acá aparece el detalle residuo por residuo.</p></div>
@@ -412,12 +396,8 @@ a:focus-visible{outline:2px solid var(--celeste);outline-offset:2px}
           </ul>
           <p style="margin:0 0 12px">Vina no modela los puentes de hidrógeno de forma direccional: su función de <em>scoring</em> sólo mira distancias. Este mapa es un análisis geométrico de la pose que ya salió, igual que el que hacen los visores de AutoDock, y no cambia el ΔG.</p>
         </div>
-        <label for="receptorArchivoC" style="margin-top:4px">Receptor</label>
-        <input type="file" id="receptorArchivoC" accept=".pdbqt">
-        <p class="nota" style="margin:6px 0 10px" id="receptorEstadoC">Si las poses son de otro receptor, cargalo acá: el de la pestaña Docking no tiene por qué ser el mismo. Las interacciones se miden contra este archivo.</p>
         <label for="poseArchivo" style="margin-top:4px">Cargar poses de otro lado</label>
-        <input type="file" id="poseArchivo" accept=".pdbqt,.dlg" multiple>
-        <p class="nota" style="margin:6px 0 0">Acepta el <code>.pdbqt</code> de poses de Vina y el <code>.dlg</code> de AutoDock&nbsp;4 / AutoDock-GPU, con sus clusters. Podés elegir varios archivos a la vez —el mismo ligando en distintas cajas o cargas, por ejemplo— y pasar de uno a otro con el selector de arriba. Todo se lee en tu computadora.</p>
+        <input type="file" id="poseArchivo" accept=".pdbqt">
         <div class="estado" id="complejoEstado"></div>
       </div>
     </div>
@@ -1300,12 +1280,6 @@ const ANION_RES  = { ASP: ['OD1','OD2'], GLU: ['OE1','OE2'] };
 
 const cEstado = (t, err) => { const e = $('complejoEstado'); e.textContent = t; e.classList.toggle('error', !!err); };
 let visorC = null, posesC = [], interActual = [], verSup = false, verDist = true, verCinta = true, poseRenderizada = -1;
-// un "conjunto" es un archivo cargado: sus poses y, si vino de un .dlg, sus clusters
-let conjuntos = [], conjActual = 0, modoVista = 'pose', claveRender = '', avisoC = '';
-const COLOR_CLUSTER = ['#5b4453', '#2f7fa8', '#a8894a', '#3f7a63', '#a0523a', '#684d5e',
-  '#7a6f9b', '#4f7d4f', '#b06a86', '#56707d'];
-// del undécimo cluster en adelante, gris: en docking ciego hay decenas y el color deja de informar
-const colorCluster = (k) => COLOR_CLUSTER[k] || '#8c8578';
 
 function leerPDBQT(txt) {
   const at = [];
@@ -1333,71 +1307,6 @@ function separarPoses(txt) {
   }
   if (act && act.lineas.some((l) => /^(ATOM|HETATM)/.test(l))) poses.push(act);
   return poses.filter((p) => p.lineas.some((l) => /^(ATOM|HETATM)/.test(l)));
-}
-
-// ── AutoDock 4 / AutoDock-GPU: el .dlg ──
-// Las líneas de coordenadas vienen con el prefijo "DOCKED: "; sacado el prefijo son PDBQT
-// común, así que el resto de la pestaña no cambia. Los clusters NO se recalculan acá: se
-// leen de la RMSD TABLE que escribe el propio AutoDock, con su tolerancia de rms.
-function leerDLG(txt) {
-  const lineas = txt.split('\n');
-  const poses = []; let act = null;
-  for (const raw of lineas) {
-    if (!raw.startsWith('DOCKED:')) continue;
-    const l = raw.slice(8);
-    if (l.startsWith('MODEL')) { act = { lineas: [], dg: null, run: parseInt(l.slice(5)) || poses.length + 1 }; continue; }
-    if (l.startsWith('ENDMDL')) { if (act) poses.push(act); act = null; continue; }
-    if (!act) continue;
-    if (l.includes('Estimated Free Energy of Binding')) {
-      const m = l.match(/=\s*([-+]?\d+\.?\d*)/); if (m) act.dg = parseFloat(m[1]);
-    } else if (/USER\s+Run\s*=\s*\d+/.test(l)) {
-      act.run = +l.match(/Run\s*=\s*(\d+)/)[1];
-    }
-    act.lineas.push(l);
-  }
-  if (act && act.lineas.some((l) => /^(ATOM|HETATM)/.test(l))) poses.push(act);
-  const buenas = poses.filter((p) => p.lineas.some((l) => /^(ATOM|HETATM)/.test(l)));
-
-  // RMSD TABLE → rank | sub-rank | run | binding energy | cluster RMSD | reference RMSD
-  const porRun = new Map(buenas.map((p) => [p.run, p]));
-  const cl = new Map();
-  let enTabla = false;
-  for (const l of lineas) {
-    if (l.includes('RMSD TABLE')) { enTabla = true; continue; }
-    if (!enTabla) continue;
-    // ojo: AutoDock escribe las energías positivas con signo "+" ("+0.42"), hay que aceptarlo
-    const m = l.match(/^\s*(\d+)\s+(\d+)\s+(\d+)\s+([-+]?\d+\.\d+)\s+([-+]?\d+\.\d+)\s+([-+]?\d+\.\d+)/);
-    if (!m) continue;
-    const rank = +m[1], run = +m[3], dg = +m[4];
-    const p = porRun.get(run);
-    if (p) { p.cluster = rank; p.sub = +m[2]; p.rmsdCluster = +m[5]; p.rmsdRef = +m[6]; if (p.dg === null) p.dg = dg; }
-    if (!cl.has(rank)) cl.set(rank, { rank, runs: [], dgs: [] });
-    cl.get(rank).runs.push(run); cl.get(rank).dgs.push(dg);
-  }
-  const clusters = [...cl.values()].sort((a, b) => a.rank - b.rank).map((c) => ({
-    rank: c.rank, runs: c.runs, n: c.runs.length,
-    mejor: Math.min(...c.dgs),
-    media: c.dgs.reduce((s, x) => s + x, 0) / c.dgs.length,
-  }));
-  // presentar las poses en el orden del ranking de AutoDock, no en el de las corridas
-  if (clusters.length) buenas.sort((a, b) => (a.cluster - b.cluster) || (a.sub - b.sub));
-  return { poses: buenas, clusters };
-}
-
-// a qué posición de la lista de poses corresponde cada miembro de cada cluster
-function indexarClusters(c) {
-  const porRank = new Map(c.clusters.map((x) => [x.rank, (x.idx = [])]));
-  c.poses.forEach((p, i) => { const a = porRank.get(p.cluster); if (a) a.push(i); });
-  for (const x of c.clusters) x.idx.sort((a, b) => (c.poses[a].dg ?? 0) - (c.poses[b].dg ?? 0));
-  return c;
-}
-
-function leerConjunto(txt, nombre) {
-  if (/^DOCKED:/m.test(txt)) {
-    const r = leerDLG(txt);
-    return indexarClusters({ nombre, tipo: 'dlg', poses: r.poses, clusters: r.clusters });
-  }
-  return { nombre, tipo: 'pdbqt', poses: separarPoses(txt), clusters: [] };
 }
 
 // geometría elemental
@@ -1671,15 +1580,6 @@ function pintarComplejo() {
   const rec = leerPDBQT(receptorTxt), lig = leerPDBQT(pose.lineas.join('\n'));
   interActual = analizar(rec, lig);
 
-  // sin una sola interacción, lo más probable es que el receptor no sea el de este docking
-  avisoC = '';
-  if (!interActual.length) {
-    let min = Infinity;
-    for (const a of lig) for (const b of rec) { const d = dist(a, b); if (d < min) min = d; }
-    if (min > 6) avisoC = `La pose está a ${min.toFixed(1)} Å del átomo más cercano del receptor: no se tocan. `
-      + 'Suele significar que el receptor cargado no es el de este docking.';
-  }
-
   if (!visorC) visorC = $3Dmol.createViewer($('visorComplejo'), { backgroundColor: 'white' });
   visorC.removeAllModels(); visorC.removeAllShapes(); visorC.removeAllLabels(); visorC.removeAllSurfaces();
   visorC.addModel(aPDB(receptorTxt), 'pdb');
@@ -1691,26 +1591,6 @@ function pintarComplejo() {
   visorC.setStyle({ model: 0, resi: residuos },
     { ...cinta, stick: { radius: 0.11, colorscheme: 'whiteCarbon' } });
   visorC.setStyle({ model: 1 }, { stick: { radius: 0.19, colorscheme: CARBONO_LIG } });
-
-  // poses acompañantes, según el modo de vista
-  const conj = conjuntos[conjActual];
-  const extras = [];
-  if (conj && conj.clusters.length && modoVista !== 'pose') {
-    if (modoVista === 'cluster') {
-      const cl = conj.clusters.find((x) => x.rank === pose.cluster);
-      if (cl) for (const j of cl.idx) if (j !== i) extras.push({ j, color: null });
-    } else {
-      conj.clusters.forEach((cl, k) => {
-        const j = cl.idx[0];
-        if (j !== undefined && j !== i) extras.push({ j, color: colorCluster(k) });
-      });
-    }
-  }
-  for (const e of extras) visorC.addModel(aPDB(conj.poses[e.j].lineas.join('\n'), true), 'pdb');
-  // palos finos y no líneas: el ancho de línea de WebGL lo ignoran muchas placas
-  extras.forEach((e, k) => visorC.setStyle({ model: 2 + k },
-    { stick: { radius: 0.055, color: e.color || '#8c8578' } }));
-
   if (verSup)
     visorC.addSurface($3Dmol.SurfaceType.VDW, { opacity: 0.55, color: '#d8d5cc' }, { model: 0, resi: residuos });
 
@@ -1724,45 +1604,19 @@ function pintarComplejo() {
           fontSize: 10, fontColor: '#17150f', backgroundColor: '#f0ece2', backgroundOpacity: 0.85,
           borderThickness: 1, borderColor: COLOR_INT[it.tipo], inFront: true });
   }
-  // el encuadre sigue a las poses: si están todas en el mismo bolsillo se acerca, y si
-  // andan desparramadas —el caso del docking ciego— abre a toda la proteína
-  const cen = (at) => at.reduce((s, a) => [s[0] + a.x / at.length, s[1] + a.y / at.length, s[2] + a.z / at.length], [0, 0, 0]);
-  const c0 = cen(lig);
-  const disperso = extras.some((e) => {
-    const c1 = cen(leerPDBQT(conj.poses[e.j].lineas.join('\n')));
-    return Math.hypot(c1[0] - c0[0], c1[1] - c0[1], c1[2] - c0[2]) > 12;
-  });
-  if (disperso) visorC.zoomTo();
-  else { visorC.zoomTo({ model: 1 }); visorC.zoom(extras.length ? 0.75 : 0.55); }
+  visorC.zoomTo({ model: 1 });
+  visorC.zoom(0.55);
   visorC.render();
 
   $('sinComplejo').hidden = true;
   $('leyenda').hidden = false;
-  let ley = Object.entries(COLOR_INT).map(([k, c]) => {
+  $('leyenda').innerHTML = Object.entries(COLOR_INT).map(([k, c]) => {
     const n = interActual.filter((x) => x.tipo === k).length;
     return `<span class="it" style="opacity:${n ? 1 : .35}"><span class="mu" style="border-color:${c}"></span>${k} (${n})</span>`;
   }).join('');
-  if (modoVista === 'repres' && conj && conj.clusters.length) {
-    // con docking ciego puede haber decenas de clusters: se nombran los diez primeros
-    ley += conj.clusters.slice(0, COLOR_CLUSTER.length).map((cl, k) =>
-      `<span class="it"><span class="mu" style="border-color:${colorCluster(k)}"></span>cl ${cl.rank} (${cl.n})</span>`).join('');
-    const resto = conj.clusters.length - COLOR_CLUSTER.length;
-    if (resto > 0) ley += `<span class="it"><span class="mu" style="border-color:#8c8578"></span>+${resto} cluster${resto > 1 ? 's' : ''} más, en gris</span>`;
-  }
-  else if (modoVista === 'cluster' && extras.length)
-    ley += `<span class="it"><span class="mu" style="border-color:#9a9285"></span>${extras.length} miembro${extras.length > 1 ? 's' : ''} del cluster</span>`;
-  $('leyenda').innerHTML = ley;
-  const etq = conj && conj.tipo === 'dlg'
-    ? `corrida ${pose.run}${pose.cluster ? ` · cluster ${pose.cluster} (sub ${pose.sub})` : ''}` +
-      `${pose.rmsdCluster !== undefined ? ` · rmsd al jefe ${pose.rmsdCluster.toFixed(2)} Å` : ''}`
-    : `pose ${i + 1}`;
-  $('pieComplejo').textContent = `${conj && conjuntos.length > 1 ? conj.nombre + ' · ' : ''}${etq} · ` +
-    `${lig.filter((a) => a.el !== 'H').length} átomos pesados · ${interActual.length} interacciones · ` +
-    `${((performance.now() - t0) / 1000).toFixed(1)} s`;
+  $('pieComplejo').textContent = `pose ${i + 1} · ${lig.filter((a) => a.el !== 'H').length} átomos pesados · ${interActual.length} interacciones · ${((performance.now() - t0) / 1000).toFixed(1)} s`;
   pintarTablaInter();
-  pintarTablaClusters();
   poseRenderizada = i;
-  claveRender = `${conjActual}|${i}|${modoVista}`;
 }
 
 function pintarTablaInter() {
@@ -1785,85 +1639,13 @@ function csvInter() {
     [x.tipo, x.residuo, x.atRes, x.atLig, x.d.toFixed(3), x.ang === null ? '' : x.ang.toFixed(1), x.rol].join(','))].join('\n');
 }
 
-function pintarSelPoses() {
-  const c = conjuntos[conjActual]; if (!c) return;
-  posesC = c.poses;
-  $('poseSel').innerHTML = c.poses.map((p, i) => {
-    const dg = p.dg !== null && p.dg !== undefined ? ` — ${p.dg.toFixed(2)} kcal/mol` : '';
-    const cl = p.cluster ? ` · cluster ${p.cluster}` : '';
-    return `<option value="${i}">${c.tipo === 'dlg' ? `Corrida ${p.run}` : `Pose ${i + 1}`}${dg}${cl}</option>`;
-  }).join('');
-}
-
-function pintarTablaClusters() {
-  const c = conjuntos[conjActual];
-  const caja = $('tablaClusters');
-  if (!c || !c.clusters.length) {
-    caja.innerHTML = '<p class="vacio">Este archivo no trae clusters: el PDBQT de Vina sólo lista poses ordenadas por ΔG. Los clusters los escribe AutoDock en el <code>.dlg</code>.</p>';
-    return;
-  }
-  const total = c.poses.length;
-  const sel = c.poses[+$('poseSel').value];
-  const max = Math.max(...c.clusters.map((x) => x.n));
-  caja.innerHTML = '<div class="desborde"><table><thead><tr>' +
-    '<th>Cluster</th><th>ΔG mejor</th><th>ΔG medio</th><th>N</th><th>% de corridas</th><th>Población</th>' +
-    '</tr></thead><tbody>' + c.clusters.map((x, k) => {
-      const pct = (100 * x.n / total);
-      const color = colorCluster(k);
-      const act = sel && sel.cluster === x.rank;
-      return `<tr class="filaCluster${act ? ' activa' : ''}" data-rank="${x.rank}" style="cursor:pointer${act ? ';font-weight:700' : ''}">` +
-        `<td><span class="tipo"><i style="background:${color}"></i>${x.rank}</span></td>` +
-        `<td>${x.mejor.toFixed(2)}</td><td>${x.media.toFixed(2)}</td><td>${x.n}</td>` +
-        `<td>${pct.toFixed(0)} %</td>` +
-        `<td><span style="display:inline-block;height:9px;width:${Math.max(2, 100 * x.n / max)}px;background:${color};vertical-align:middle"></span></td></tr>`;
-    }).join('') + '</tbody></table></div>' +
-    `<p class="nota" style="margin:8px 0 0">${c.clusters.length} cluster${c.clusters.length > 1 ? 's' : ''} sobre ${total} corridas. ` +
-    `El cluster 1 se queda con el ${(100 * c.clusters[0].n / total).toFixed(0)} % de ellas: cuanto más alto, más convergió la búsqueda. ` +
-    'Un ΔG bueno con población baja es una pose que apareció una vez.</p>';
-  for (const tr of caja.querySelectorAll('.filaCluster')) tr.addEventListener('click', () => {
-    const x = c.clusters.find((y) => y.rank === +tr.dataset.rank);
-    if (!x || !x.idx.length) return;
-    $('poseSel').value = x.idx[0];
-    mostrarComplejo();
-  });
-}
-
-function pintarSelLigandos() {
-  const varios = conjuntos.length > 1;
-  $('ligSel').hidden = !varios; $('rotLig').hidden = !varios;
-  if (!varios) return;
-  $('ligSel').innerHTML = conjuntos.map((c, i) => {
-    const mejor = c.poses.reduce((m, p) => (p.dg !== null && p.dg !== undefined && p.dg < m ? p.dg : m), Infinity);
-    return `<option value="${i}"${i === conjActual ? ' selected' : ''}>${c.nombre}` +
-      `${isFinite(mejor) ? ` — ${mejor.toFixed(2)}` : ''}${c.clusters.length ? ` · ${c.clusters.length} cl` : ''}</option>`;
-  }).join('');
-}
-
-// mantiene la firma vieja: la usa la pestaña Docking con el PDBQT de Vina
 function cargarPoses(txt, origen) {
-  const c = leerConjunto(txt, origen);
-  if (!c.poses.length) { cEstado('Ese archivo no tiene poses legibles.', true); return; }
-  conjuntos = [c]; conjActual = 0;
-  pintarSelLigandos(); pintarSelPoses(); pintarTablaClusters();
-  claveRender = ''; poseRenderizada = -1;
-  cEstado(`${c.poses.length} pose${c.poses.length > 1 ? 's' : ''} ${origen}` +
-    `${c.clusters.length ? ` en ${c.clusters.length} cluster${c.clusters.length > 1 ? 's' : ''}` : ''}.`);
-}
-
-async function cargarArchivos(files) {
-  const nuevos = [];
-  for (const f of files) {
-    const c = leerConjunto(await f.text(), f.name.replace(/\.(pdbqt|dlg)$/i, ''));
-    if (c.poses.length) nuevos.push(c);
-  }
-  if (!nuevos.length) { cEstado('Ninguno de esos archivos tiene poses legibles.', true); return; }
-  conjuntos = nuevos; conjActual = 0;
-  pintarSelLigandos(); pintarSelPoses(); pintarTablaClusters();
-  claveRender = ''; poseRenderizada = -1;
-  const saltados = files.length - nuevos.length;
-  cEstado(`${nuevos.length} archivo${nuevos.length > 1 ? 's' : ''} cargado${nuevos.length > 1 ? 's' : ''}` +
-    `${saltados ? ` (${saltados} sin poses legibles)` : ''}.`);
-  mostrarComplejo();
+  posesC = separarPoses(txt);
+  if (!posesC.length) { cEstado('Ese archivo no tiene poses legibles.', true); return; }
+  $('poseSel').innerHTML = posesC.map((p, i) =>
+    `<option value="${i}">Pose ${i + 1}${p.dg !== null ? ` — ${p.dg.toFixed(2)} kcal/mol` : ''}</option>`).join('');
+  poseRenderizada = -1;
+  cEstado(`${posesC.length} pose${posesC.length > 1 ? 's' : ''} ${origen}.`);
 }
 
 async function mostrarComplejo() {
@@ -1873,31 +1655,10 @@ async function mostrarComplejo() {
     try { receptorTxt = await (await fetch($('receptor').value || 'datos/receptor-proteasa-hiv-4LL3.pdbqt')).text(); }
     catch { cEstado('No se pudo cargar el receptor.', true); return; }
   }
-  if (claveRender !== `${conjActual}|${+$('poseSel').value}|${modoVista}`) repintar();
+  if (poseRenderizada !== +$('poseSel').value) { cEstado('Midiendo la pose…'); setTimeout(() => { pintarComplejo(); cEstado('Listo.'); }, 10); }
 }
 
-function repintar() {
-  cEstado('Midiendo la pose…');
-  setTimeout(() => { pintarComplejo(); cEstado(avisoC || 'Listo.', !!avisoC); }, 10);
-}
-
-$('poseSel').addEventListener('change', repintar);
-$('posePrev').addEventListener('click', () => {
-  const s = $('poseSel'); if (+s.value > 0) { s.value = +s.value - 1; repintar(); }
-});
-$('poseSig').addEventListener('click', () => {
-  const s = $('poseSel'); if (+s.value < posesC.length - 1) { s.value = +s.value + 1; repintar(); }
-});
-$('ligSel').addEventListener('change', (e) => {
-  conjActual = +e.target.value;
-  pintarSelPoses(); pintarTablaClusters(); repintar();
-});
-for (const [id, modo] of [['mPose', 'pose'], ['mCluster', 'cluster'], ['mRepres', 'repres']])
-  $(id).addEventListener('click', () => {
-    modoVista = modo;
-    for (const x of ['mPose', 'mCluster', 'mRepres']) $(x).classList.toggle('activa', x === id);
-    if (posesC.length) repintar();
-  });
+$('poseSel').addEventListener('change', () => { cEstado('Midiendo la pose…'); setTimeout(() => { pintarComplejo(); cEstado('Listo.'); }, 10); });
 $('vSuperficie').addEventListener('click', () => {
   verSup = !verSup; $('vSuperficie').classList.toggle('activa', verSup);
   if (posesC.length) pintarComplejo();
@@ -1912,39 +1673,9 @@ $('vCinta').addEventListener('click', () => {
 });
 $('encuadrarC').addEventListener('click', () => { if (visorC) { visorC.zoomTo({ model: 1 }); visorC.zoom(0.55); visorC.render(); } });
 $('poseArchivo').addEventListener('change', async (e) => {
-  const fs = [...e.target.files]; if (!fs.length) return;
-  cEstado(`Leyendo ${fs.length} archivo${fs.length > 1 ? 's' : ''}…`);
-  setTimeout(() => cargarArchivos(fs), 10);
-});
-$('receptorArchivoC').addEventListener('change', async (e) => {
   const f = e.target.files[0]; if (!f) return;
-  receptorTxt = await f.text();
-  const n = leerPDBQT(receptorTxt).length;
-  $('receptorEstadoC').textContent = `Receptor "${f.name}": ${n} átomos. Las interacciones se miden contra este archivo.`;
-  if ($('receptorEstado')) $('receptorEstado').textContent = `Receptor "${f.name}": ${receptorTxt.split('\n').length} líneas.`;
-  claveRender = '';
-  if (posesC.length) repintar();
-});
-$('bajarClusters').addEventListener('click', () => {
-  const c = conjuntos[conjActual];
-  if (!c || !c.clusters.length) { cEstado('Este archivo no trae clusters.', true); return; }
-  const total = c.poses.length;
-  const csv = ['ligando,cluster,dG_mejor,dG_medio,n,pct_corridas,corridas',
-    ...c.clusters.map((x) => [c.nombre, x.rank, x.mejor.toFixed(3), x.media.toFixed(3), x.n,
-      (100 * x.n / total).toFixed(1), '"' + x.runs.join(' ') + '"'].join(','))].join('\n');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-  a.download = `clusters_${c.nombre}.csv`; a.click(); URL.revokeObjectURL(a.href);
-});
-$('bajarClusterPdb').addEventListener('click', () => {
-  const c = conjuntos[conjActual]; if (!c) return;
-  const pose = c.poses[+$('poseSel').value];
-  const cl = c.clusters.find((x) => x.rank === pose?.cluster);
-  const idx = cl ? cl.idx : [+$('poseSel').value];
-  const txt = idx.map((j, k) => `MODEL ${k + 1}\n` + c.poses[j].lineas.join('\n') + '\nENDMDL').join('\n') + '\n';
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([txt], { type: 'text/plain' }));
-  a.download = `${c.nombre}${cl ? `_cluster${cl.rank}` : ''}.pdbqt`; a.click(); URL.revokeObjectURL(a.href);
+  cargarPoses(await f.text(), `de "${f.name}"`);
+  mostrarComplejo();
 });
 $('copiarInter').addEventListener('click', async () => {
   if (!interActual.length) { cEstado('No hay interacciones que copiar.', true); return; }
@@ -1956,13 +1687,7 @@ $('bajarInter').addEventListener('click', () => {
   a.href = URL.createObjectURL(new Blob([csvInter()], { type: 'text/csv' }));
   a.download = 'interacciones.csv'; a.click(); URL.revokeObjectURL(a.href);
 });
-window.__complejo = () => ({   // para inspección y pruebas
-  poses: posesC.length, inter: interActual, modo: modoVista,
-  conjuntos: conjuntos.map((c) => ({ nombre: c.nombre, tipo: c.tipo, poses: c.poses.length, clusters: c.clusters.length })),
-  cual: conjActual, clusters: (conjuntos[conjActual] || {}).clusters || [],
-  poseSel: +$('poseSel').value, clusterDeLaPose: (posesC[+$('poseSel').value] || {}).cluster,
-  modelos: visorC ? (visorC.getNumModels ? visorC.getNumModels() : (visorC.models || []).length) : 0,
-});
+window.__complejo = () => ({ poses: posesC.length, inter: interActual });
 
 
 // ───────────────── portada: se va en cuanto el usuario arranca ─────────────────

@@ -1,6 +1,6 @@
 # C7 — Prueba funcional de la pestaña Complejo con .dlg, en un Firefox de verdad.
 # Requiere geckodriver escuchando en 4455 y la app servida por servidor.py en 8766,
-# con los .dlg y el receptor en app/datos/. Maneja la app como un usuario: clics en
+# con los .dlg y el receptor en beta/datos/. Maneja la app como un usuario: clics en
 # las pestañas y archivos subidos por los input type=file.
 # OJO: Firefox de snap no ve /tmp del sistema, y geckodriver ACUMULA archivos en un
 # input multiple (el navegador real los reemplaza), por eso se limpia antes de subir.

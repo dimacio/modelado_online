@@ -2,6 +2,9 @@
 
 Qué se agregó, qué se verificó y con qué datos. Fecha: 2026-11-11.
 
+Esto vive en **BetaTools** (`beta/`), el canal de pruebas, no en QuEtool (`app/`). Pasa a
+la estable cuando se haya usado en serio contra una campaña completa.
+
 ## Qué se agregó
 
 La pestaña Complejo leía un solo archivo: el PDBQT de poses que escribe Vina. Ahora lee
@@ -65,14 +68,14 @@ alcanza, porque justamente los casos degenerados son los que traen los formatos 
 
 ```bash
 # C7.1 — barrido del lector sobre la campaña
-node docs/validacion/arnes/c7-barrido-dlg.mjs app/index.html <carpeta con los .dlg>
+node docs/validacion/arnes/c7-barrido-dlg.mjs beta/index.html <carpeta con los .dlg>
 
 # C7.2 — regresión del mapa de interacciones
-node docs/validacion/arnes/c7-regresion-c5.mjs app/index.html docs/validacion/datos
+node docs/validacion/arnes/c7-regresion-c5.mjs beta/index.html docs/validacion/datos
 
 # C7.3 — la pestaña en Firefox
-#   copiar los .dlg y el receptor a app/datos/, y en dos terminales:
-python3 app/servidor.py 8766
+#   copiar los .dlg y el receptor a beta/datos/, y en dos terminales:
+python3 beta/servidor.py 8766
 geckodriver --port 4455
 python3 docs/validacion/arnes/c7-complejo-navegador.py
 ```

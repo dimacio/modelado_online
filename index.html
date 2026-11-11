@@ -30,7 +30,10 @@
     padding:12px 18px;color:var(--papel);background:var(--celeste3);border:2px solid var(--tinta);
     text-decoration:none}
   .boton:hover{background:var(--celeste)}
+  .boton.beta{background:var(--papel);color:var(--tinta);margin-left:10px}
+  .boton.beta:hover{background:var(--celeste)}
   .pie{color:var(--tenue);font-size:13px;margin-top:30px}
+  .nota-beta{color:var(--tenue);font-size:14px;margin-top:14px}
   a{color:var(--celeste3)}
 </style>
 </head>
@@ -45,7 +48,11 @@
     que corren enteras en el navegador: dibujás la molécula, calculás geometría y
     descriptores, la dockeás contra un receptor y mirás las interacciones de la pose.
     Nada se instala, nada se sube a un servidor y todo el cálculo ocurre en tu máquina.</p>
-    <p><a class="boton" href="app/">Abrir QuEtool</a></p>
+    <p><a class="boton" href="app/">Abrir QuEtool</a><a class="boton beta" href="beta/">Versión Beta</a></p>
+    <p class="nota-beta">La <b>versión Beta</b> es el canal de pruebas: estrena cada funcionalidad
+    nueva antes de que pase a QuEtool, así que puede andar distinto o romperse. Hoy trae la lectura
+    de resultados de <b>AutoDock 4 / AutoDock-GPU</b> (archivos <code>.dlg</code>) con sus clusters,
+    la caja de docking dibujada y varios ligandos cargados a la vez.</p>
   </div>
 
   <h2>Las tres etapas</h2>

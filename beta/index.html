@@ -1,0 +1,2061 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Da COOP/COEP desde un service worker: es lo que habilita SharedArrayBuffer (y por lo tanto Vina)
+     en hostings estáticos que no dejan tocar las cabeceras, como GitHub Pages. MIT, gzuidhof/coi-serviceworker. -->
+<script src="coi-serviceworker.js"></script>
+<title>BetaTools</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* "Dos tintas": papel y tinta, sin texturas ni biseles ni degradados.
+   Todo lo interactivo es celeste; lo que lanza un cálculo largo, ciruela.
+   La paleta sale de los fotogramas que pasó Dimas. Tema único. */
+:root{
+  --papel:#f3f1e8; --panel:#ffffff; --lienzo:#ffffff;
+  --tinta:#15130f; --tenue:#6a665e; --suave:#d8d5cc; --raya:#e2dfd5;
+  --celeste:#63b4db; --celeste2:#2a7fa8; --celeste3:#1d5f80;
+  --ciruela:#684d5e; --ciruela2:#503344; --alerta:#a0523a;
+  --pix:'Silkscreen',ui-monospace,monospace;
+  --sans:Tahoma,Verdana,'DejaVu Sans',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;color:var(--tinta);font:14px/1.5 var(--sans);background:var(--papel)}
+.envoltorio{max-width:1320px;margin:0 auto;
+  padding-inline:max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-right,0px));
+  padding-block:22px 48px}
+.relieve,.hundido{border:2px solid var(--tinta)}
+
+h1{font:700 1.15rem/1.3 var(--pix);letter-spacing:.02em;text-transform:uppercase;margin:0 0 6px;color:var(--tinta)}
+.subtitulo{color:var(--tenue);margin:0 0 20px;max-width:70ch;font-size:.86rem}
+
+.tarjeta{position:relative;min-width:0;background:var(--panel);border:2px solid var(--tinta);padding:14px}
+h2{font:700 .68rem var(--pix);text-transform:uppercase;letter-spacing:.04em;color:var(--tinta);
+   margin:0 0 12px!important;padding:7px 10px;background:var(--panel);
+   border-bottom:2px solid var(--tinta);width:auto}
+.tarjeta > h2:first-child{margin:-14px -14px 14px!important}
+
+label{display:block;font:700 .62rem var(--pix);text-transform:uppercase;color:var(--tenue);margin-bottom:6px}
+input[type=text],select{width:100%;font:14px var(--mono);padding:6px 8px;color:var(--tinta);
+  background:var(--lienzo);border:2px solid var(--tinta)}
+input[type=text]:focus-visible,select:focus-visible{outline:2px solid var(--celeste);outline-offset:1px}
+input[type=file]{font:12px var(--mono);max-width:100%}
+
+button{font-family:var(--pix)}
+.ejemplos{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
+.ejemplos button,.acciones button,.vistas button,.pestanas button{
+  font:700 .62rem var(--pix);text-transform:uppercase;padding:7px 11px;cursor:pointer;
+  color:var(--tinta);background:var(--panel);border:2px solid var(--tinta)}
+.ejemplos button:hover,.acciones button:hover,.vistas button:hover{background:var(--papel)}
+.ejemplos button:active,.acciones button:active,.vistas button:active,.primario:active{background:var(--suave)}
+
+.primario{display:block;width:100%;font:700 .8rem var(--pix);text-transform:uppercase;padding:11px;cursor:pointer;
+  color:#fff;background:var(--ciruela);border:2px solid var(--tinta)}
+.primario:hover:not(:disabled){background:var(--ciruela2)}
+.primario.azul{background:var(--celeste2)}
+.primario.azul:hover:not(:disabled){background:var(--celeste3)}
+.primario:disabled{cursor:default;color:var(--tenue);background:var(--suave)}
+
+.estado{margin-top:9px;font:.76rem/1.45 var(--mono);color:var(--tenue);min-height:1.4em;overflow-wrap:anywhere}
+.estado.error{color:var(--alerta);font-weight:600}
+.paso{display:flex;justify-content:space-between;gap:12px;font:.75rem/1.85 var(--mono);color:var(--tenue);
+  border-bottom:1px solid var(--raya);padding:1px 0}
+.paso:last-child{border-bottom:0}
+.paso span:last-child{color:var(--tinta);font-weight:500}
+
+.rejilla{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:0;
+  background:var(--panel);border:2px solid var(--tinta);overflow:hidden}
+.celda{padding:9px 12px;min-width:0;background:var(--panel);
+  border-right:1px solid var(--raya);border-bottom:1px solid var(--raya)}
+.celda .k{font:700 .56rem var(--pix);text-transform:uppercase;color:var(--tenue)}
+.celda .v{font:600 1.1rem var(--mono);font-variant-numeric:tabular-nums;margin-top:3px;color:var(--celeste2)}
+.celda .u{font-size:.64rem;color:var(--tenue);margin-left:3px}
+.vacio{color:var(--tenue);font-size:.84rem;padding:6px 0}
+
+table{width:100%;border-collapse:collapse;font:.78rem var(--mono);font-variant-numeric:tabular-nums}
+th,td{text-align:right;padding:6px 9px;border-bottom:1px solid var(--raya);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font:700 .56rem var(--pix);text-transform:uppercase;color:var(--tenue);background:var(--papel);
+   border-bottom:2px solid var(--tinta)}
+.desborde{overflow-x:auto;background:var(--lienzo);border:2px solid var(--tinta)}
+
+.acciones{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.nota{margin-top:24px;font-size:.78rem;color:var(--tenue);max-width:74ch}
+.nota code{font:.95em var(--mono);background:var(--panel);padding:1px 5px;border:1px solid var(--suave)}
+
+.pila{display:flex;flex-direction:column;gap:16px;min-width:0}
+.columnas{display:grid;grid-template-columns:minmax(0,360px) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:860px){.columnas{grid-template-columns:1fr}}
+
+.pestanas{display:flex;gap:4px;margin-bottom:0;padding-left:4px}
+.pestanas button{margin-bottom:-2px;position:relative;z-index:2;background:var(--raya)}
+.pestanas button.activa{background:var(--panel);border-bottom-color:var(--panel);padding-bottom:9px}
+#panel-descriptores,#panel-docking,#panel-complejo{border-top:2px solid var(--tinta);padding-top:16px}
+#panel-complejo{display:flex;flex-direction:column;gap:16px}
+#cajaComplejo{position:relative}
+#visorComplejo{width:100%;height:100%;cursor:grab}
+.vistas select{font:12px var(--mono);padding:4px 6px;max-width:260px;
+  border:2px solid var(--tinta);background:var(--lienzo)}
+.leyenda{display:flex;flex-wrap:wrap;gap:16px;align-items:center}
+.leyenda .it{display:flex;align-items:center;gap:7px;font:700 .58rem var(--pix);text-transform:uppercase;color:var(--tenue)}
+.leyenda .mu{width:24px;border-top:3px dashed}
+.tipo{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.tipo i{width:9px;height:9px;flex:none;display:inline-block;border:1px solid var(--tinta)}
+.criterios{font:.78rem/1.6 var(--sans);color:var(--tinta);margin:0}
+.criterios b{font:700 .62rem var(--pix);text-transform:uppercase;color:var(--tenue);letter-spacing:.02em}
+.criterios li{margin-bottom:7px}
+.criterios ul{margin:0 0 12px;padding-left:18px}
+
+.lienzo{overflow:hidden;background:var(--lienzo);position:relative;border:2px solid var(--tinta)}
+.lienzo openchemlib-editor{display:block;width:100%;height:100%;background:#fff}
+#panel-descriptores{display:flex;flex-direction:column;gap:16px}
+.lienzo-grande .lienzo{height:clamp(380px,70vh,760px)}
+.barra{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,300px);gap:18px;align-items:start}
+.barra .campo{min-width:0}
+.barra .botonera{display:flex;flex-direction:column;gap:9px;align-items:stretch;min-width:0}
+.columnas-res{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:860px){.barra{grid-template-columns:1fr}.barra .botonera{min-width:0}.columnas-res{grid-template-columns:1fr}}
+
+.interruptor{display:flex;align-items:center;gap:8px;font:400 .8rem var(--sans);color:var(--tinta);
+  text-transform:none;margin:0}
+.interruptor input{accent-color:var(--celeste2);width:14px;height:14px}
+.aclara{color:var(--tenue);font-size:.76rem}
+
+.vistas{display:flex;gap:5px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.vistas button.activa{background:var(--celeste);color:var(--tinta)}
+.pie3d{margin-left:auto;font:.72rem var(--mono);color:var(--tenue)}
+#caja3d{position:relative}
+#visor3d{width:100%;height:100%;cursor:grab}
+.taller{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;padding:9px 11px;
+  background:var(--papel);border:2px solid var(--tinta)}
+.taller .grupo{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.taller button{font:700 .6rem var(--pix);text-transform:uppercase;padding:6px 9px;cursor:pointer;
+  color:var(--tinta);background:var(--panel);border:2px solid var(--tinta)}
+.taller button:hover{background:var(--suave)}
+.taller button.destacado{background:var(--ciruela);color:#fff}
+.taller button.destacado:hover{background:var(--ciruela2)}
+.taller input{width:58px;font:12px var(--mono);padding:4px 6px;
+  border:2px solid var(--tinta);background:var(--lienzo)}
+.taller .rot{font:700 .58rem var(--pix);text-transform:uppercase;color:var(--tenue)}
+.taller .dato{font:600 .74rem var(--mono);color:var(--celeste2);min-width:66px}
+.taller .ayuda{font:.74rem var(--sans);color:var(--tenue)}
+.paramsOpt{display:grid;grid-template-columns:auto 72px;gap:5px 9px;align-items:center}
+.paramsOpt span{font:700 .58rem var(--pix);text-transform:uppercase;color:var(--tenue)}
+.paramsOpt input{font:12px var(--mono);padding:4px 6px;width:100%;
+  border:2px solid var(--tinta);background:var(--lienzo)}
+.sinGeo{position:absolute;inset:0;display:grid;place-content:center;text-align:center;pointer-events:none}
+
+.caja{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center}
+.caja span{font:700 .6rem var(--pix);text-transform:uppercase;color:var(--tenue)}
+.caja input{font:12px var(--mono);padding:5px 7px;width:100%}
+.consola{font:.74rem/1.5 var(--mono);color:var(--papel);background:var(--tinta);
+  border:2px solid var(--tinta);padding:10px;max-height:240px;overflow:auto;
+  white-space:pre-wrap;word-break:break-word;margin:0}
+.aviso{background:#ddeef7;border:2px solid var(--tinta);
+  padding:12px 14px;font-size:.84rem;margin-bottom:16px;color:var(--tinta)}
+.aviso code{background:var(--panel);font:.95em var(--mono);padding:1px 4px;border:1px solid var(--suave)}
+/* portada: ocupa el lienzo mientras no haya nada dibujado */
+.portada{position:absolute;inset:0;background:var(--panel);overflow:auto;
+  display:grid;align-content:start;justify-items:start;padding:clamp(20px,4vw,40px)}
+.portada-caja{max-width:62ch}
+.portada h3{font:700 .92rem/1.4 var(--pix);text-transform:uppercase;letter-spacing:.02em;margin:0 0 12px}
+.portada .lead{margin:0 0 18px;font-size:.88rem;line-height:1.65;color:var(--tinta)}
+.portada .pasos{margin:0 0 20px;padding-left:20px;font-size:.84rem;line-height:1.6}
+.portada .pasos li{margin-bottom:9px}
+.portada .pasos b{font-weight:700}
+.portada-botones{display:flex;gap:8px;flex-wrap:wrap;align-items:stretch}
+.portada-botones .primario{display:inline-block;width:auto;padding:9px 18px;font-size:.68rem}
+.portada-botones button:not(.primario){font:700 .62rem var(--pix);text-transform:uppercase;padding:9px 14px;
+  cursor:pointer;color:var(--tinta);background:var(--panel);border:2px solid var(--tinta)}
+.portada-botones button:not(.primario):hover{background:var(--papel)}
+.portada-pie{margin:18px 0 0;font-size:.78rem;color:var(--tenue)}
+
+/* ayuda */
+#panel-ayuda{border-top:2px solid var(--tinta);padding-top:16px}
+.ayuda{font:.84rem/1.65 var(--sans);color:var(--tinta)}
+.ayuda p{margin:0 0 12px}
+.ayuda p:last-child{margin-bottom:0}
+.ayuda h4{font:700 .62rem var(--pix);text-transform:uppercase;letter-spacing:.03em;color:var(--celeste3);
+  margin:18px 0 8px}
+.ayuda h4:first-child{margin-top:0}
+.ayuda ol{margin:0 0 4px;padding-left:20px}
+.ayuda ol li{margin-bottom:8px}
+.ayuda dl{margin:0}
+.ayuda dt{font:700 .62rem var(--pix);text-transform:uppercase;letter-spacing:.02em;color:var(--tenue);
+  margin-top:12px}
+.ayuda dt:first-child{margin-top:0}
+.ayuda dd{margin:3px 0 0}
+.ayuda dl + p{margin-top:15px}
+.ayuda code{font:.95em var(--mono);background:var(--papel);padding:1px 5px;border:1px solid var(--suave)}
+.ayuda button{font:700 .62rem var(--pix);text-transform:uppercase;padding:8px 13px;cursor:pointer;
+  color:var(--tinta);background:var(--panel);border:2px solid var(--tinta)}
+.ayuda button:hover{background:var(--papel)}
+a{color:var(--celeste3);text-decoration-thickness:1px;text-underline-offset:2px}
+a:hover{color:var(--ciruela)}
+a:focus-visible{outline:2px solid var(--celeste);outline-offset:2px}
+.compartir{display:grid;grid-template-columns:168px minmax(0,1fr);gap:18px;align-items:start}
+.compartir .qr{width:168px;border:2px solid var(--tinta);background:#fff;line-height:0}
+.compartir .qr svg{display:block;width:100%;height:auto}
+.compartir-txt p:nth-last-child(2){margin-top:14px}
+.compartir .ig{margin-top:14px;color:var(--tenue);font-size:.8rem}
+.compartir code{word-break:break-all}
+@media (max-width:620px){.compartir{grid-template-columns:1fr}.compartir .qr{width:min(220px,100%)}}
+</style>
+</head>
+<body>
+<div class="envoltorio">
+  <h1>BetaTools</h1>
+  <p class="subtitulo"><b>Canal de pruebas de QuEtool.</b> Acá se estrena cada funcionalidad nueva antes de que pase a la versión estable, así que algo puede andar distinto o directamente romperse. La estable está en <a href="../app/">QuEtool</a>. · Modelado molecular en el navegador: dibujo, geometría 3D, minimización GFN2-xTB, descriptores y docking. Todo corre en esta pestaña: no hay servidor de cálculo ni nada que instalar.</p>
+
+  <nav class="pestanas" id="pestanas">
+    <button data-p="descriptores" class="activa">Descriptores</button>
+    <button data-p="docking">Docking</button>
+    <button data-p="complejo">Complejo</button>
+    <button data-p="ayuda">Ayuda</button>
+  </nav>
+
+  <div id="panel-descriptores">
+    <div class="tarjeta lienzo-grande">
+      <div class="vistas">
+        <button data-v="2d" class="activa">Dibujo 2D</button>
+        <button data-v="3d">Geometría 3D</button>
+        <span class="pie3d" id="pie3d"></span>
+      </div>
+      <div class="lienzo" id="caja2d"><openchemlib-editor id="editor"></openchemlib-editor>
+        <div class="portada" id="portada">
+          <div class="portada-caja">
+            <h3>Modelado molecular, entero en el navegador</h3>
+            <p class="lead">BetaTools reemplaza la cadena HyperChem + MGLTools de los trabajos prácticos de QSAR y
+            docking: geometría, descriptores y docking de AutoDock Vina, todo en esta pestaña. No hay nada que
+            instalar, no hace falta licencia y lo que calculás no se sube a ningún lado. Pensada para completar el
+            TP de la serie NNRTI de punta a punta, y para retomarlo donde lo dejaste: cada etapa se descarga como
+            archivo y se vuelve a cargar.</p>
+            <ol class="pasos">
+              <li><b>Elegí la estructura</b> en <em>Estructura de la serie del TP</em> —los diez NNRTI, T50 de
+                  control y EFZ-Br de diseño— o dibujala / pegá un SMILES.</li>
+              <li><b>Calculá</b> y salen la geometría 3D y nueve descriptores; cada cálculo se suma a la tabla
+                  <em>Serie</em>, que se descarga como CSV y se recarga con <em>Cargar CSV</em>.</li>
+              <li><b>Dockeá</b> contra el receptor <em>2B6A</em>: la caja del TP queda cargada sola. Guardá el
+                  <em>PDBQT de poses</em> y la <em>salida completa</em> para el informe.</li>
+              <li><b>Mirá el complejo</b>: la pose dentro de la proteína y sus interacciones, medidas y listadas,
+                  con su CSV para la tabla de la Sección V.</li>
+            </ol>
+            <div class="portada-botones">
+              <button id="portadaEmpezar" class="primario azul">Empezar a dibujar</button>
+              <button id="portadaEjemplo">Probar con un ejemplo</button>
+              <button id="portadaAyuda">Cómo se usa</button>
+            </div>
+            <p class="portada-pie">Versión en prueba. Si algo no anda o falta, contalo: de eso se trata el beta test.</p>
+          </div>
+        </div>
+      </div>
+      <div class="lienzo" id="caja3d" hidden><div id="visor3d"></div>
+        <p class="vacio sinGeo" id="sinGeo">Todavía no hay geometría. Apretá Calcular y aparece acá.</p>
+      </div>
+      <div class="taller" id="taller" hidden>
+        <div class="grupo">
+          <span class="ayuda">Arrastrá para rotar, rueda para acercar.</span>
+        </div>
+        <div class="grupo">
+          <button id="distorsionar">Distorsionar</button>
+          <input type="text" id="ampDist" value="0.12" title="amplitud en ángstrom">
+          <span class="rot">Å</span>
+          <button id="encuadrar">Encuadrar</button>
+        </div>
+        <div class="grupo">
+          <span class="rot">pasos</span><input type="text" id="optPasos" value="150">
+          <span class="rot">umbral |F|</span><input type="text" id="optFuerza" value="1e-3">
+          <button id="reoptimizar" class="destacado">Minimizar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="tarjeta barra">
+      <div class="campo">
+        <label for="smiles">SMILES</label>
+        <input type="text" id="smiles" value="O=C1CSC(c2c(Cl)cccc2Cl)N1Cc1ccco1" spellcheck="false">
+        <div class="ejemplos" id="ejemplos"></div>
+      </div>
+      <div class="botonera">
+        <div class="acciones">
+          <button id="delDibujo">Tomar del dibujo</button>
+          <button id="alDibujo">Llevar al dibujo</button>
+        </div>
+        <div class="estado" id="estado"></div>
+      </div>
+    </div>
+
+    <div class="columnas-res">
+      <div class="tarjeta">
+        <h2>Resultado</h2>
+        <button class="primario azul" id="calcular" disabled>Cargando librerías…</button>
+        <div id="resultado" style="margin-top:14px"><p class="vacio">Dibujá o elegí una molécula y calculá.</p></div>
+        <div id="tiempos" style="margin-top:16px"></div>
+      </div>
+      <div class="tarjeta">
+        <h2>Serie</h2>
+        <div class="desborde"><table id="tabla"><thead></thead><tbody></tbody></table></div>
+        <div id="serieVacia" class="vacio">Cada cálculo se agrega acá para armar la tabla de descriptores.</div>
+        <div class="acciones">
+          <button id="copiar">Copiar como CSV</button>
+          <button id="descargar">Descargar CSV</button>
+          <button id="cargarCSV">Cargar CSV</button>
+          <button id="limpiar">Vaciar</button>
+          <input type="file" id="serieArchivo" accept=".csv,.txt" hidden>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="panel-docking" hidden>
+    <div class="columnas">
+      <div class="tarjeta">
+        <label>Receptor</label>
+        <select id="receptor">
+          <option value="datos/receptor-proteasa-hiv-4LL3.pdbqt">Proteasa de HIV (4LL3) — ejemplo</option>
+          <option value="datos/2B6A_receptor.pdbqt">Transcriptasa reversa de HIV-1 (2B6A) — TP</option>
+          <option value="">Subir un .pdbqt propio…</option>
+        </select>
+        <input type="file" id="receptorArchivo" accept=".pdbqt" hidden>
+        <div class="estado" id="receptorEstado"></div>
+
+        <label style="margin-top:16px">Caja de docking</label>
+        <div class="caja">
+          <span>centro x</span><input type="text" id="cx" value="-9.815">
+          <span>centro y</span><input type="text" id="cy" value="15.200">
+          <span>centro z</span><input type="text" id="cz" value="26.964">
+          <span>tamaño x</span><input type="text" id="sx" value="20">
+          <span>tamaño y</span><input type="text" id="sy" value="20">
+          <span>tamaño z</span><input type="text" id="sz" value="20">
+          <span>exhaustiveness</span><input type="text" id="ex" value="8">
+          <span>núcleos</span><input type="text" id="cpu" value="2">
+        </div>
+
+        <button class="primario" id="dockear" disabled>Preparando…</button>
+        <div class="estado" id="dockEstado"></div>
+      </div>
+
+      <div class="pila">
+        <div class="tarjeta">
+          <h2>Poses</h2>
+          <div id="poses"><p class="vacio">El ligando sale del SMILES de la otra pestaña. Se convierte a PDBQT con hidrógenos a pH 7,4 y árbol de torsiones, y se dockea acá mismo.</p></div>
+        </div>
+        <div class="tarjeta">
+          <h2>Salida de Vina</h2>
+          <pre id="vinaSalida" class="consola">—</pre>
+          <div class="acciones">
+            <button id="bajarPose">Descargar PDBQT de poses</button>
+            <button id="bajarSalida">Descargar salida completa</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="panel-complejo" hidden>
+    <div class="tarjeta lienzo-grande">
+      <div class="vistas">
+        <span class="rot" id="rotLig" style="font:700 .58rem var(--pix);text-transform:uppercase;color:var(--tenue)" hidden>Ligando</span>
+        <select id="ligSel" hidden></select>
+        <span class="rot" style="font:700 .58rem var(--pix);text-transform:uppercase;color:var(--tenue)">Pose</span>
+        <button id="posePrev" title="Pose anterior">◀</button>
+        <select id="poseSel"></select>
+        <button id="poseSig" title="Pose siguiente">▶</button>
+        <span class="rot" style="font:700 .58rem var(--pix);text-transform:uppercase;color:var(--tenue)">Ver</span>
+        <button id="mPose" class="activa">Pose</button>
+        <button id="mCluster" title="La pose elegida más el resto de su cluster en alambre">Cluster</button>
+        <button id="mRepres" title="La mejor pose de cada cluster, cada una de un color">Representantes</button>
+        <button id="vCaja" class="activa" title="La caja de docking, leída del .dlg">Caja</button>
+        <button id="vCinta" class="activa">Cinta</button>
+        <button id="vSuperficie">Superficie</button>
+        <button id="vDistancias" class="activa">Distancias</button>
+        <button id="encuadrarC">Encuadrar</button>
+        <span class="pie3d" id="pieComplejo"></span>
+      </div>
+      <div class="lienzo" id="cajaComplejo"><div id="visorComplejo"></div>
+        <p class="vacio sinGeo" id="sinComplejo">Todavía no hay poses. Dockeá en la pestaña anterior, o cargá desde la tarjeta de abajo un <code>.pdbqt</code> de poses o un <code>.dlg</code> de AutoDock —con su receptor, si no es el de la pestaña Docking.</p>
+      </div>
+      <div class="taller leyenda" id="leyenda" hidden></div>
+    </div>
+
+    <div class="columnas-res">
+      <div class="tarjeta">
+        <h2>Clusters</h2>
+        <div id="tablaClusters"><p class="vacio">Un <code>.dlg</code> de AutoDock trae las corridas ya agrupadas por RMSD. Cargalo abajo y acá aparece el histograma de clusters; hacé clic en uno para ver su mejor pose.</p></div>
+        <div class="acciones" style="margin-top:12px">
+          <button id="bajarClusters">Descargar CSV de clusters</button>
+          <button id="bajarClusterPdb">Descargar el cluster como PDBQT</button>
+        </div>
+      </div>
+      <div class="tarjeta">
+        <h2>Interacciones</h2>
+        <div id="tablaInter"><p class="vacio">Elegí una pose y acá aparece el detalle residuo por residuo.</p></div>
+        <div class="acciones" style="margin-top:12px">
+          <button id="copiarInter">Copiar como CSV</button>
+          <button id="bajarInter">Descargar CSV</button>
+        </div>
+      </div>
+      <div class="tarjeta">
+        <h2>Criterios</h2>
+        <div class="criterios">
+          <ul>
+            <li><b>Puente de hidrógeno</b> — D···A ≤ 3,5 Å, H···A ≤ 2,6 Å y ángulo D–H···A ≥ 130°. Se usan los hidrógenos polares que ya trae el PDBQT.</li>
+            <li><b>Hidrofóbica</b> — C···C ≤ 4,0 Å entre carbonos sin N ni O unidos; se conserva sólo el contacto más corto de cada residuo.</li>
+            <li><b>π–π</b> — centroides a ≤ 5,5 Å, desplazamiento lateral ≤ 2,0 Å y normales a &lt; 30° (paralela) o &gt; 50° (en T).</li>
+            <li><b>Halógeno</b> — X···N/O ≤ 4,0 Å con ángulo C–X···A ≥ 140°.</li>
+            <li><b>Puente salino</b> — centros de carga a ≤ 5,0 Å. Los grupos del receptor se reconocen por nombre de residuo (ASP, GLU, ARG, LYS, HIS) y los del ligando por conectividad.</li>
+          </ul>
+          <p style="margin:0 0 12px">Vina no modela los puentes de hidrógeno de forma direccional: su función de <em>scoring</em> sólo mira distancias. Este mapa es un análisis geométrico de la pose que ya salió, igual que el que hacen los visores de AutoDock, y no cambia el ΔG.</p>
+        </div>
+        <label for="receptorArchivoC" style="margin-top:4px">Receptor</label>
+        <input type="file" id="receptorArchivoC" accept=".pdbqt">
+        <p class="nota" style="margin:6px 0 10px" id="receptorEstadoC">Si las poses son de otro receptor, cargalo acá: el de la pestaña Docking no tiene por qué ser el mismo. Las interacciones se miden contra este archivo.</p>
+        <label for="poseArchivo" style="margin-top:4px">Cargar poses de otro lado</label>
+        <input type="file" id="poseArchivo" accept=".pdbqt,.dlg" multiple>
+        <p class="nota" style="margin:6px 0 0">Acepta el <code>.pdbqt</code> de poses de Vina y el <code>.dlg</code> de AutoDock&nbsp;4 / AutoDock-GPU, con sus clusters. Podés elegir varios archivos a la vez —el mismo ligando en distintas cajas o cargas, por ejemplo— y pasar de uno a otro con el selector de arriba. Todo se lee en tu computadora.</p>
+        <div class="estado" id="complejoEstado"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="panel-ayuda" hidden>
+    <div class="columnas-res">
+      <div class="pila">
+        <div class="tarjeta">
+          <h2>Qué es esto</h2>
+          <div class="ayuda">
+            <p>BetaTools reemplaza la cadena de software propietario de los trabajos prácticos de QSAR y docking por
+            piezas libres que corren dentro del navegador. No hay servidor de cálculo: la molécula que dibujás,
+            la geometría y las poses se calculan en tu computadora y no salen de ahí.</p>
+            <p>Eso tiene una consecuencia práctica: la velocidad depende de tu máquina, no de la red. Una notebook
+            modesta hace los descriptores en pocos segundos y un docking en uno o dos minutos.</p>
+            <p><b>De qué está hecha.</b> Dibujo y confórmeros con OpenChemLib (campo de fuerzas MMFF94); HOMO, LUMO,
+            gap y dipolo con GFN2-xTB compilado a WebAssembly; masa, clogP, refractividad, TPSA y superficie con
+            RDKit; conversión a PDBQT con OpenBabel; docking con Webina, que es AutoDock Vina 1.2.3 compilado a
+            WebAssembly; y el visor 3D con 3Dmol.js. Todo corre en tu navegador: no hay servidor de cálculo.</p>
+            <p><button id="verPortada">Volver a ver la portada</button></p>
+          </div>
+        </div>
+
+        <div class="tarjeta">
+          <h2>Paso a paso</h2>
+          <div class="ayuda">
+            <h4>Descriptores</h4>
+            <ol>
+              <li>Dibujá la estructura en el lienzo, o escribí el SMILES y apretá <em>Llevar al dibujo</em>.
+                  <em>Tomar del dibujo</em> hace lo inverso.</li>
+              <li><em>Calcular</em> genera un confórmero 3D, lo relaja con MMFF94, corre GFN2-xTB y saca los
+                  descriptores. Cada cálculo se agrega a la tabla <em>Serie</em>, que se baja como CSV para
+                  armar el QSAR.</li>
+              <li>En <em>Geometría 3D</em>: arrastrá para rotar y usá la rueda para acercar.
+                  <em>Distorsionar</em> corre todos los átomos al azar la cantidad de ångström que pongas al
+                  lado; es la forma de sacar a la molécula de su mínimo y después verla volver.</li>
+              <li>La cámara no se reacomoda sola mientras los átomos se mueven, para que la vista no salte
+                  durante la minimización: <em>Encuadrar</em> vuelve a centrar cuando lo necesites.</li>
+              <li><em>Minimizar</em> relaja la geometría con GFN2 y actualiza dipolo, HOMO, LUMO y gap. Los
+                  descriptores 2D (masa, clogP, refractividad, TPSA, superficie) no cambian, porque no dependen
+                  de la geometría.</li>
+            </ol>
+            <h4>Docking</h4>
+            <ol>
+              <li>El ligando sale del SMILES de la primera pestaña: se le agregan hidrógenos a pH 7,4 y se
+                  convierte a PDBQT con su árbol de torsiones.</li>
+              <li>Elegí el receptor (4LL3 de ejemplo, 2B6A del TP con su caja precargada) o subí un
+                  <code>.pdbqt</code> propio.</li>
+              <li>La <em>caja</em> define dónde busca Vina: centro y tamaño en ångström. Si no sabés el centro,
+                  usá el centroide del ligando cristalográfico.</li>
+              <li><em>Exhaustiveness</em> es cuánto insiste la búsqueda: 8 es el valor por defecto de Vina,
+                  subirlo da resultados más reproducibles y tarda proporcionalmente más. <em>Núcleos</em>
+                  conviene dejarlo bajo: con más hilos que núcleos reales la corrida se vuelve mucho más lenta.</li>
+            </ol>
+            <h4>Complejo</h4>
+            <ol>
+              <li>Toma las poses del último docking, o un <code>.pdbqt</code> de poses que cargues.</li>
+              <li><em>Cinta</em> muestra u oculta la proteína, <em>Superficie</em> dibuja la del bolsillo,
+                  <em>Distancias</em> prende las etiquetas y <em>Encuadrar</em> vuelve a centrar en el ligando.</li>
+              <li>La tabla de interacciones se baja como CSV.</li>
+            </ol>
+            <h4>Terminar el TP de forma remota</h4>
+            <ol>
+              <li>Elegí la estructura en <em>Estructura de la serie del TP</em> (los diez NNRTI, más T50 de
+                  control y EFZ-Br de diseño) y apretá <em>Calcular</em>. La tabla <em>Serie</em> se descarga
+                  como CSV y se puede volver a <em>Cargar CSV</em> otro día: los archivos son el estado, nada
+                  se guarda en la nube.</li>
+              <li>En <em>Docking</em>, elegí el receptor <em>2B6A</em>: la caja del TP queda cargada sola.
+                  Al terminar, descargá el <em>PDBQT de poses</em> y la <em>salida completa</em> (parámetros y
+                  log de Vina) para el informe.</li>
+              <li>En <em>Complejo</em>, cargá las poses descargadas (o usá las del último docking) y bajá el
+                  <em>CSV de interacciones</em>. Para seguir en otra máquina alcanza con el CSV de descriptores
+                  y los PDBQT de poses.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      <div class="pila">
+        <div class="tarjeta">
+          <h2>Qué significa cada número</h2>
+          <div class="ayuda">
+            <dl>
+              <dt>Masa</dt><dd>Peso molecular promedio. RDKit.</dd>
+              <dt>clogP</dt><dd>Logaritmo del coeficiente de reparto octanol/agua, estimado por el método de
+                contribución de fragmentos de Wildman y Crippen. RDKit.</dd>
+              <dt>Refractividad</dt><dd>Refractividad molar por el mismo método de Wildman y Crippen; se usa como
+                descriptor estérico y de polarizabilidad. RDKit.</dd>
+              <dt>TPSA</dt><dd>Superficie polar topológica de Ertl, en Å². RDKit.</dd>
+              <dt>Superficie</dt><dd>Superficie accesible al solvente aproximada por el método de Labute, en Å².
+                RDKit.</dd>
+              <dt>Dipolo</dt><dd>Momento dipolar en debye, reconstruido a partir de los multipolos atómicos
+                acumulados (CAMM) que devuelve GFN2-xTB. Depende de la geometría.</dd>
+              <dt>HOMO, LUMO, Gap</dt><dd>Energías de los orbitales frontera y su diferencia, en eV, de GFN2-xTB.
+                Dependen de la geometría.</dd>
+            </dl>
+            <p>Abajo del cuadro aparecen los tiempos de cada etapa, la energía MMFF94 del confórmero y si el SCF
+            convergió. Si dice que no convergió, el resto de los números electrónicos no son confiables.</p>
+          </div>
+        </div>
+
+        <div class="tarjeta">
+          <h2>Hasta dónde llega</h2>
+          <div class="ayuda">
+            <p><b>GFN2-xTB no es DFT.</b> Es un método semiempírico de <em>tight binding</em>. Sirve muy bien para
+            comparar moléculas de una misma serie, que es lo que pide un QSAR, pero sus energías absolutas no son
+            comparables con las de un cálculo <em>ab initio</em>.</p>
+            <p><b>El confórmero es uno solo.</b> Se genera uno, se relaja y con ese se calcula. El dipolo en
+            particular depende bastante del confórmero; el HOMO casi nada. Si la molécula es flexible, tenelo
+            presente al interpretar.</p>
+            <p><b>El ΔG de Vina es una función de scoring empírica</b>, no una energía libre medida. Sirve para
+            ordenar poses y comparar ligandos parecidos, no para predecir una constante de afinidad.</p>
+            <p><b>Las interacciones de la pestaña Complejo son geometría.</b> Se miden sobre la pose que salió;
+            Vina no las usa de esa forma para puntuar. Los umbrales están escritos en esa misma pestaña.</p>
+          </div>
+        </div>
+
+
+        <div class="tarjeta">
+          <h2>Compartir</h2>
+          <div class="ayuda compartir">
+            <div class="qr"><svg viewBox="0 0 39 39" shape-rendering="crispEdges" role="img" aria-label="Código QR al enlace de BetaTools" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 39 39"><path fill="#fff" d="M0 0h39v39h-39z"/><path stroke="#15130f" d="M3 3.5h7m1 0h1m1 0h1m1 0h1m1 0h1m3 0h1m2 0h2m3 0h7m-33 1h1m5 0h1m2 0h1m1 0h4m2 0h2m1 0h1m1 0h1m1 0h1m1 0h1m5 0h1m-33 1h1m1 0h3m1 0h1m1 0h5m1 0h2m2 0h2m1 0h2m1 0h1m1 0h1m1 0h3m1 0h1m-33 1h1m1 0h3m1 0h1m3 0h1m3 0h1m1 0h1m1 0h1m1 0h3m1 0h1m1 0h1m1 0h3m1 0h1m-33 1h1m1 0h3m1 0h1m5 0h9m1 0h1m3 0h1m1 0h3m1 0h1m-33 1h1m5 0h1m1 0h2m1 0h2m1 0h1m1 0h2m2 0h1m3 0h1m1 0h1m5 0h1m-33 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-24 1h1m2 0h1m1 0h1m7 0h1m1 0h1m-25 1h1m1 0h1m3 0h2m1 0h3m3 0h2m1 0h2m3 0h2m2 0h1m2 0h1m1 0h1m-33 1h2m1 0h2m2 0h1m1 0h4m2 0h2m2 0h2m2 0h2m1 0h1m2 0h1m2 0h1m-31 1h3m1 0h1m1 0h1m1 0h1m2 0h3m1 0h7m1 0h1m3 0h2m1 0h1m-33 1h1m1 0h2m1 0h1m2 0h1m1 0h1m3 0h3m1 0h1m3 0h1m2 0h1m1 0h3m-30 1h1m1 0h1m3 0h1m1 0h1m2 0h4m1 0h3m1 0h1m1 0h3m1 0h2m4 0h1m-33 1h2m1 0h1m4 0h1m1 0h2m1 0h2m1 0h3m1 0h2m1 0h2m1 0h2m1 0h4m-33 1h1m1 0h2m2 0h5m3 0h1m1 0h1m3 0h1m2 0h2m2 0h2m3 0h1m-32 1h2m2 0h1m1 0h1m5 0h1m1 0h2m2 0h2m1 0h2m1 0h5m-26 1h4m1 0h1m1 0h3m2 0h1m3 0h1m1 0h3m1 0h2m2 0h2m-32 1h6m1 0h1m2 0h1m3 0h4m1 0h3m1 0h2m1 0h1m2 0h1m2 0h1m-31 1h2m2 0h1m1 0h2m1 0h3m1 0h1m3 0h2m2 0h1m3 0h1m1 0h2m1 0h1m-33 1h1m2 0h3m6 0h1m3 0h2m2 0h1m1 0h1m1 0h1m1 0h1m1 0h2m1 0h1m-32 1h1m1 0h1m1 0h1m1 0h1m1 0h2m3 0h1m3 0h1m1 0h1m1 0h2m1 0h1m1 0h2m3 0h2m-29 1h2m1 0h3m7 0h1m3 0h1m1 0h2m1 0h2m1 0h2m1 0h1m-33 1h3m1 0h1m1 0h1m1 0h2m2 0h2m1 0h1m1 0h3m3 0h1m2 0h2m4 0h1m-28 1h1m1 0h3m3 0h1m4 0h1m4 0h2m2 0h3m1 0h2m-33 1h2m2 0h1m1 0h4m1 0h2m1 0h3m2 0h1m4 0h6m-22 1h3m1 0h5m2 0h2m3 0h1m3 0h1m3 0h1m-33 1h7m1 0h1m1 0h3m1 0h2m1 0h3m1 0h2m1 0h1m1 0h1m1 0h3m1 0h1m-33 1h1m5 0h1m3 0h2m1 0h1m1 0h2m1 0h1m4 0h2m3 0h2m-30 1h1m1 0h3m1 0h1m2 0h1m1 0h3m2 0h3m1 0h9m-29 1h1m1 0h3m1 0h1m2 0h1m3 0h1m2 0h3m1 0h1m2 0h1m1 0h1m1 0h4m1 0h1m-33 1h1m1 0h3m1 0h1m1 0h1m3 0h3m1 0h1m3 0h1m2 0h1m1 0h1m1 0h2m2 0h2m-33 1h1m5 0h1m3 0h2m2 0h3m1 0h3m1 0h1m1 0h2m1 0h3m-30 1h7m1 0h2m6 0h1m1 0h1m1 0h1m2 0h2m1 0h4m2 0h1"/></svg></div>
+            <div class="compartir-txt">
+              <p>Escaneá el código o pasá el enlace. No hace falta instalar nada ni crear una cuenta:
+              se abre y funciona.</p>
+              <p><code id="enlace">https://dimacio.github.io/modelado_online/beta/</code></p>
+              <p><button id="copiarEnlace">Copiar enlace</button></p>
+              <p class="ig">Si te interesa el tema, en Instagram sigo contando de qué va esto:
+              <a href="https://www.instagram.com/la.data.atada/" target="_blank" rel="noopener noreferrer">@la.data.atada</a>.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="tarjeta">
+          <h2>Si algo no anda</h2>
+          <div class="ayuda">
+            <dl>
+              <dt>El botón de docking dice "No disponible sin las cabeceras"</dt>
+              <dd>Vina necesita <code>SharedArrayBuffer</code>, que el navegador sólo habilita con ciertas cabeceras.
+                En la versión publicada las pone un <em>service worker</em>; si tu navegador los bloquea (ventana
+                privada de Firefox, algunas políticas corporativas o extensiones de privacidad) el docking no
+                aparece. Probá en una ventana normal, o levantalo en tu máquina con <code>servir.bat</code>.
+                Los descriptores andan igual en todos los casos.</dd>
+              <dt>La primera vez la página se recarga sola</dt>
+              <dd>Es el service worker tomando control. Pasa una sola vez.</dd>
+              <dt>"SCF did not converge" al minimizar</dt>
+              <dd>Suele venir de una distorsión demasiado grande, que deja dos átomos casi encima.
+                Bajá la amplitud o volvé a calcular desde el SMILES.</dd>
+              <dt>El docking tarda muchísimo</dt>
+              <dd>Bajá <em>núcleos</em> a 1 o 2 y <em>exhaustiveness</em> a 4 mientras probás.</dd>
+              <dt>La primera carga baja varios megabytes</dt>
+              <dd>Es el motor de GFN2-xTB compilado a WebAssembly. Queda en la caché del navegador: sólo se baja
+                la primera vez.</dd>
+            </dl>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="nota">Piezas libres: openchemlib, RDKit, occjs (GFN2-xTB), Webina (AutoDock Vina) y 3Dmol.js. Qué calcula cada una y hasta dónde llega el método, en <a href="#" id="irAyuda">Ayuda</a>. · Instagram: <a href="https://www.instagram.com/la.data.atada/" target="_blank" rel="noopener noreferrer">@la.data.atada</a></p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@rdkit/rdkit@2026.9.2/dist/RDKit_minimal.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.4.2/3Dmol-min.js" crossorigin="anonymous"></script>
+<script type="module">
+import OCL, { registerCustomElement } from 'https://cdn.jsdelivr.net/npm/openchemlib@9.25.2/dist/openchemlib.js';
+import { loadOCC } from 'https://cdn.jsdelivr.net/npm/@peterspackman/occjs@0.9.7/dist/index.browser.js';
+
+const BASE_OCL = 'https://cdn.jsdelivr.net/npm/openchemlib@9.25.2/dist/';
+const BASE_RDK = 'https://cdn.jsdelivr.net/npm/@rdkit/rdkit@2026.9.2/dist/';
+const BASE_OCC = 'https://cdn.jsdelivr.net/npm/@peterspackman/occjs@0.9.7/dist/';
+const AU2D = 2.541746473, HA2EV = 27.211386;
+
+const EJEMPLOS = [
+  ['GFA (3DLE)',            'O=C(COc1ccc(Cl)cc1C(=O)c1ccccc1)Nc1ccccc1'],
+  ['EFZ — efavirenz',       'O=C1Nc2ccc(Cl)cc2[C@@](C#CC2CC2)(C(F)(F)F)O1'],
+  ['TBO — 8-Cl-TIBO',       'CC(C)=CCN1Cc2c(Cl)ccc3[nH]c(=S)n(c23)C[C@@H]1C'],
+  ['TNK — emivirina',       'CC(C)c1c(Cc2ccccc2)n(COCc2ccccc2)c(=O)[nH]c1=O'],
+  ['NVP — nevirapina',      'Cc1ccnc2c1NC(=O)c1cccnc1N2C1CC1'],
+  ['HBQ (2OPP)',            'CC[C@H]1C(=O)Nc2ccc(F)cc2N1C(=O)OC(C)C'],
+  ['QNO47b',                'COC(=O)N[C@@H]1C(=O)Nc2ccc(Cl)cc2[C@]1(C#CC1CC1)C(F)(F)F'],
+  ['U05 (1RTH)',            'CCN1c2cc([N+](=O)[O-])ccc2N(C)C(=O)c2cccnc21'],
+  ['ZZE — lersivirina',     'CCc1nn(CCO)c(CC)c1Oc1cc(C#N)cc(C#N)c1'],
+  ['QNO47c',                'CC(=O)N[C@@H]1C(=O)Nc2ccc(Cl)cc2[C@]1(C#CC1CC1)C(F)(F)F'],
+  ['T50 — control (cristal 2B6A)', 'Cc1cccc2c1nc(-c1c(F)cccc1F)n2Cc1c(F)cccc1F'],
+  ['EFZ-Br — compuesto de diseño', 'O=C1Nc2ccc(Br)cc2[C@@](C#CC2CC2)(C(F)(F)F)O1'],
+];
+
+const $ = (id) => document.getElementById(id);
+const estado = (t, err) => { const e = $('estado'); e.textContent = t; e.classList.toggle('error', !!err); };
+let RDKit, OCC, serie = [], ultimaGeometria = null, visor = null;
+// geometria viva del taller: numeros atomicos, etiquetas y coordenadas en angstrom
+let geo = null;
+// el modulo WASM lanza punteros a excepciones de C++; esto los vuelve legibles
+function leerError(e) {
+  if (typeof e === 'number' && OCC && typeof OCC.getExceptionMessage === 'function') {
+    try { const m = OCC.getExceptionMessage(e); return Array.isArray(m) ? m[1] || m[0] : String(m); } catch { /* sin suerte */ }
+  }
+  return e && e.message ? e.message : String(e);
+}
+window.__geo = () => geo;   // para inspección y pruebas
+
+$('ejemplos').innerHTML =
+  '<label for="serieTP" style="font:700 .62rem var(--pix);text-transform:uppercase;color:var(--tenue)">Estructura de la serie del TP</label>' +
+  '<select id="serieTP"><option value="">— elegí una —</option>' +
+  EJEMPLOS.map(([n], i) => `<option value="${i}">${n}</option>`).join('') +
+  '</select>';
+document.getElementById('serieTP').addEventListener('change', (e) => {
+  const i = +e.target.value;
+  if (isNaN(i) || i < 0 || !EJEMPLOS[i]) return;
+  $('smiles').value = EJEMPLOS[i][1];
+  cerrarPortada();
+  estado(`Estructura "${EJEMPLOS[i][0]}" cargada en el campo SMILES. Apretá Calcular.`);
+});
+
+(async function arrancar() {
+  try {
+    estado('Registrando recursos de OpenChemLib…');
+    OCL.Resources.register(await (await fetch(BASE_OCL + 'resources.json')).text());
+    estado('Cargando RDKit…');
+    RDKit = await window.initRDKitModule({ locateFile: (f) => BASE_RDK + f });
+    estado('Cargando el motor GFN2 (unos 6 MB)…');
+    OCC = await loadOCC({ wasmPath: BASE_OCC + 'occjs.wasm', dataPath: BASE_OCC + 'occjs.data' });
+    estado('Listo.');
+    $('calcular').disabled = false;
+    $('calcular').textContent = 'Calcular';
+  } catch (e) {
+    estado('No se pudieron cargar las librerías: ' + e, true);
+  }
+})();
+
+
+// ──────────────── optimización de geometría con GFN2 (L-BFGS) ────────────────
+// El módulo solo trae optimizador para Hartree-Fock y DFT, así que el bucle va acá.
+// Posiciones en Bohr y gradientes en Ha/Bohr, que es lo que devuelve la librería.
+const vres = (a,b) => a.map((x,i)=>x-b[i]);
+const vesc = (a,s) => a.map(x=>x*s);
+const vsum = (a,b,s=1) => a.map((x,i)=>x+s*b[i]);
+const vpun = (a,b) => a.reduce((t,x,i)=>t+x*b[i],0);
+const vmax = (a) => a.reduce((m,x)=>Math.max(m,Math.abs(x)),0);
+const leerMat = (m,n) => { const v=[]; for(let i=0;i<n;i++) for(let k=0;k<3;k++) v.push(m.get(k,i)); return v; };
+const armarMat = (v,n) => { const p=OCC.Mat3N.create(n); for(let i=0;i<n;i++) for(let k=0;k<3;k++) p.set(k,i,v[i*3+k]); return p; };
+
+const BOHR = 0.529177210903;
+function xyzDesde(v, etiquetas) {
+  const l = [String(etiquetas.length), 'paso'];
+  for (let i = 0; i < etiquetas.length; i++)
+    l.push(`${etiquetas[i]} ${(v[i*3]*BOHR).toFixed(5)} ${(v[i*3+1]*BOHR).toFixed(5)} ${(v[i*3+2]*BOHR).toFixed(5)}`);
+  return l.join('\n');
+}
+
+async function optimizarGFN2(calc, n, avisar) {
+  const MAX = Math.max(1, Math.min(2000, parseInt($('optPasos').value) || 150));
+  const TOL_F = Math.max(1e-7, Math.min(1, parseFloat($('optFuerza').value) || 1e-3));
+  const TOL_E = 1e-6, MEM = 8;
+  const evaluar = (xx) => {
+    calc.updateStructure(armarMat(xx, n));
+    const r = calc.singlePoint();
+    return { E: r.totalEnergy, g: leerMat(calc.gradient(), n) };
+  };
+  let x = leerMat(calc.positions(), n);
+  let { E, g } = evaluar(x);
+  const E0 = E;
+  const S = [], Y = [];
+  let pasos = 0;
+
+  for (pasos = 1; pasos <= MAX; pasos++) {
+    if (vmax(g) < TOL_F) break;
+    avisar(pasos, E - E0, vmax(g), x);
+    await new Promise((r) => setTimeout(r, 0));   // devolver el hilo para que la página respire
+
+    let q = g.slice(); const alpha = [];
+    for (let i = S.length - 1; i >= 0; i--) {
+      alpha[i] = vpun(S[i], q) / vpun(Y[i], S[i]);
+      q = vsum(q, Y[i], -alpha[i]);
+    }
+    const gamma = S.length ? vpun(S[S.length-1], Y[Y.length-1]) / vpun(Y[Y.length-1], Y[Y.length-1]) : 1 / vmax(g);
+    let z = vesc(q, gamma);
+    for (let i = 0; i < S.length; i++) {
+      const beta = vpun(Y[i], z) / vpun(Y[i], S[i]);
+      z = vsum(z, S[i], alpha[i] - beta);
+    }
+    let d = vesc(z, -1);
+    if (vpun(d, g) > 0) d = vesc(g, -1);           // si no baja, ir por el gradiente
+
+    let paso = 1, nuevo = null;
+    const pend = vpun(d, g);
+    for (let k = 0; k < 12; k++) {                  // búsqueda de línea de Armijo
+      const r = evaluar(vsum(x, d, paso));
+      if (r.E <= E + 1e-4 * paso * pend) { nuevo = { x: vsum(x, d, paso), ...r }; break; }
+      paso *= 0.5;
+    }
+    if (!nuevo) break;
+
+    const sv = vres(nuevo.x, x), yv = vres(nuevo.g, g), dE = Math.abs(nuevo.E - E);
+    x = nuevo.x; E = nuevo.E; g = nuevo.g;
+    if (vpun(sv, yv) > 1e-12) { S.push(sv); Y.push(yv); if (S.length > MEM) { S.shift(); Y.shift(); } }
+    if (dE < TOL_E && vmax(g) < TOL_F * 5) break;
+  }
+  calc.updateStructure(armarMat(x, n));
+  const final = calc.singlePoint();
+  return { pasos, dE: (E - E0) * 627.509, fuerzaMax: vmax(g), convergio: vmax(g) < TOL_F, x, res: final };
+}
+
+const vec = (v) => { const n = v.size(), a = []; for (let i = 0; i < n; i++) a.push(v.get(i)); return a; };
+
+async function calcular(smiles) {
+  const t = {}, r = { smiles };
+  let t0 = performance.now();
+
+  const mol = OCL.Molecule.fromSmiles(smiles);
+  const conf = new OCL.ConformerGenerator(Date.now() & 0xffff).getOneConformerAsMolecule(mol);
+  if (!conf) throw new Error('no se pudo generar un confórmero');
+  const ff = new OCL.ForceFieldMMFF94(conf, OCL.ForceFieldMMFF94.MMFF94);
+  ff.minimise();
+  r.atomos = conf.getAllAtoms();
+  r.mmff94 = ff.getTotalEnergy();
+  ultimaGeometria = { molfile: conf.toMolfile(), nombre: smiles, E: r.mmff94, n: r.atomos, nivel: 'MMFF94' };
+  geo = { Z: [], et: [], xyz: [], nivel: 'MMFF94' };
+  for (let i = 0; i < r.atomos; i++) {
+    geo.Z.push(conf.getAtomicNo(i)); geo.et.push(conf.getAtomLabel(i));
+    geo.xyz.push(conf.getAtomX(i), conf.getAtomY(i), conf.getAtomZ(i));
+  }
+  yaEncuadrado = false;
+  t.geometria = performance.now() - t0;
+
+  t0 = performance.now();
+  const Z = [], pos = [];
+  for (let i = 0; i < r.atomos; i++) {
+    Z.push(conf.getAtomicNo(i));
+    pos.push([conf.getAtomX(i), conf.getAtomY(i), conf.getAtomZ(i)]);
+  }
+  const pm = OCC.Mat3N.create(Z.length);
+  pos.forEach((p, i) => { pm.set(0, i, p[0]); pm.set(1, i, p[1]); pm.set(2, i, p[2]); });
+  const molecula = new OCC.Molecule(OCC.IVec.fromArray(Z), pm);
+  const calc = OCC.XtbCalculator.fromMolecule(molecula, OCC.XtbMethod.GFN2);
+  let res = calc.singlePoint();
+  t.gfn2 = performance.now() - t0;
+
+
+  const en = vec(res.orbitalEnergies), oc = vec(res.orbitalOccupations);
+  const nocc = oc.filter((o) => o > 0.5).length;
+  r.homo = en[nocc - 1] * HA2EV;
+  r.lumo = en[nocc] * HA2EV;
+  r.gap = r.lumo - r.homo;
+
+  const q = vec(res.atomicCharges), ad = res.atomicDipoles, P = calc.positions();
+  const mu = [0, 0, 0];
+  for (let i = 0; i < Z.length; i++)
+    for (let k = 0; k < 3; k++) mu[k] += q[i] * P.get(k, i) + ad.get(k, i);
+  r.dipolo = Math.hypot(...mu) * AU2D;
+  r.convergio = res.converged;
+
+  t0 = performance.now();
+  const m2 = RDKit.get_mol(smiles);
+  const d = JSON.parse(m2.get_descriptors());
+  m2.delete();
+  r.clogP = d.CrippenClogP; r.mr = d.CrippenMR; r.mw = d.amw; r.tpsa = d.tpsa; r.asa = d.labuteASA;
+  t.rdkit = performance.now() - t0;
+
+  return { r, t };
+}
+
+const CAMPOS = [
+  ['mw', 'Masa', 'g/mol', 2], ['clogP', 'clogP', '', 3], ['mr', 'Refractividad', '', 2],
+  ['tpsa', 'TPSA', 'Å²', 1], ['asa', 'Superficie', 'Å²', 1], ['dipolo', 'Dipolo', 'D', 2],
+  ['homo', 'HOMO', 'eV', 3], ['lumo', 'LUMO', 'eV', 3], ['gap', 'Gap', 'eV', 3],
+];
+
+function pintar(r, t) {
+  $('resultado').innerHTML = '<div class="rejilla">' + CAMPOS.map(([k, n, u, dec]) =>
+    `<div class="celda"><div class="k">${n}</div><div class="v">${r[k].toFixed(dec)}<span class="u">${u}</span></div></div>`
+  ).join('') + '</div>';
+  $('tiempos').innerHTML = [
+    ['Geometría 3D + MMFF94', t.geometria], ['GFN2-xTB', t.gfn2], ['Descriptores RDKit', t.rdkit],
+  ].map(([n, ms]) => `<div class="paso"><span>${n}</span><span>${(ms / 1000).toFixed(2)} s</span></div>`).join('')
+    + (r.opt ? `<div class="paso"><span>Pasos · ΔE · |F|max</span><span>${r.opt.pasos} · ${r.opt.dE.toFixed(1)} kcal/mol · ${r.opt.fuerzaMax.toExponential(1)}${r.opt.convergio ? '' : ' (no convergió)'}</span></div>` : '')
+    + `<div class="paso"><span>Energía MMFF94</span><span>${r.mmff94.toFixed(2)} kcal/mol</span></div>`
+    + `<div class="paso"><span>Átomos · SCF</span><span>${r.atomos} · ${r.convergio ? 'convergió' : 'NO convergió'}</span></div>`;
+}
+
+function pintarSerie() {
+  const vacia = serie.length === 0;
+  $('serieVacia').hidden = !vacia;
+  $('tabla').hidden = vacia;
+  if (vacia) { $('tabla').querySelector('thead').innerHTML = ''; $('tabla').querySelector('tbody').innerHTML = ''; return; }
+  $('tabla').querySelector('thead').innerHTML =
+    '<tr><th>SMILES</th>' + CAMPOS.map(([, n]) => `<th>${n}</th>`).join('') + '</tr>';
+  $('tabla').querySelector('tbody').innerHTML = serie.map((r) =>
+    `<tr><td title="${r.smiles}">${r.smiles.length > 22 ? r.smiles.slice(0, 21) + '…' : r.smiles}</td>` +
+    CAMPOS.map(([k, , , dec]) => `<td>${r[k].toFixed(dec)}</td>`).join('') + '</tr>').join('');
+}
+
+function csv() {
+  return ['smiles,' + CAMPOS.map(([k]) => k).join(',')]
+    .concat(serie.map((r) => '"' + r.smiles + '",' + CAMPOS.map(([k, , , dec]) => r[k].toFixed(dec)).join(',')))
+    .join('\n');
+}
+
+$('calcular').addEventListener('click', () => {
+  const s = $('smiles').value.trim();
+  if (!s) { estado('Escribí un SMILES.', true); return; }
+  $('calcular').disabled = true;
+  estado('Calculando…');
+  setTimeout(async () => {
+    try {
+      const { r, t } = await calcular(s);
+      ultimoResultado = { r, t };
+      pintar(r, t);
+      mostrarGeometria();
+      serie.push(r); pintarSerie();
+      estado(`Listo en ${((t.geometria + t.gfn2 + t.rdkit) / 1000).toFixed(2)} s.`);
+    } catch (e) {
+      estado('Error: ' + leerError(e), true);
+    } finally {
+      $('calcular').disabled = false;
+    }
+  }, 10);
+});
+
+$('copiar').addEventListener('click', async () => {
+  if (!serie.length) { estado('La serie está vacía.', true); return; }
+  try { await navigator.clipboard.writeText(csv()); estado('CSV copiado.'); }
+  catch { estado('No se pudo copiar; usá Descargar.', true); }
+});
+$('descargar').addEventListener('click', () => {
+  if (!serie.length) { estado('La serie está vacía.', true); return; }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv()], { type: 'text/csv' }));
+  a.download = 'descriptores.csv'; a.click(); URL.revokeObjectURL(a.href);
+});
+$('limpiar').addEventListener('click', () => { serie = []; pintarSerie(); estado('Serie vaciada.'); });
+
+// cargar una serie exportada antes (CSV de la tabla): restaura el trabajo de otra sesión
+function parsearCSVLinea(l) {
+  const out = []; let cur = '', q = false;
+  for (let i = 0; i < l.length; i++) {
+    const c = l[i];
+    if (q) {
+      if (c === '"') { if (l[i + 1] === '"') { cur += '"'; i++; } else q = false; }
+      else cur += c;
+    } else if (c === '"') q = true;
+    else if (c === ',') { out.push(cur); cur = ''; }
+    else cur += c;
+  }
+  out.push(cur);
+  return out;
+}
+$('cargarCSV').addEventListener('click', () => $('serieArchivo').click());
+$('serieArchivo').addEventListener('change', async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const txt = await f.text();
+    const lineas = txt.trim().split(/\r?\n/).filter((l) => l.trim());
+    if (!lineas.length) throw new Error('el archivo está vacío');
+    const esperadas = ['smiles', 'mw', 'clogP', 'mr', 'tpsa', 'asa', 'dipolo', 'homo', 'lumo', 'gap'];
+    const cab = parsearCSVLinea(lineas[0]).map((s) => s.trim());
+    const idx = esperadas.map((k) => cab.indexOf(k));
+    if (idx.some((i) => i < 0)) throw new Error('el encabezado no es el CSV de la Serie de BetaTools');
+    const filas = lineas.slice(1).map((l) => parsearCSVLinea(l));
+    const nueva = filas.map((fs) => {
+      const r = { smiles: fs[idx[0]].trim() };
+      for (let k = 1; k < esperadas.length; k++) r[esperadas[k]] = +fs[idx[k]];
+      return r;
+    });
+    if (nueva.some((r) => !r.smiles || esperadas.slice(1).some((k) => !isFinite(r[k]))))
+      throw new Error('hay filas con valores inválidos');
+    serie = nueva; pintarSerie();
+    estado(`Serie cargada: ${nueva.length} compuestos desde "${f.name}".`);
+  } catch (err) { estado('No se pudo cargar el CSV: ' + (err && err.message ? err.message : err), true); }
+});
+
+
+// ───────────────────────── visor de geometría 3D ─────────────────────────
+let yaEncuadrado = false;
+// el encuadre sólo vale si el lienzo 3D está a la vista: si está oculto mide cero
+// y zoomTo deja la molécula fuera de cuadro para siempre
+function encuadrarSiHaceFalta() {
+  if (yaEncuadrado || !visor || $('caja3d').hidden || !$('visor3d').clientWidth) return false;
+  visor.zoomTo(); yaEncuadrado = true; return true;
+}
+
+function asegurarVisor() {
+  if (visor) return;
+  visor = $3Dmol.createViewer($('visor3d'), { backgroundColor: 'white' });
+}
+
+function dibujarCuadro(xyz, pie) {
+  if (!window.$3Dmol) return;
+  $('sinGeo').hidden = true;
+  asegurarVisor();
+  visor.removeAllModels();
+  visor.removeAllShapes();          // si no, la marca de selección se acumula en cada cuadro
+  visor.addModel(xyz, 'xyz');
+  visor.setStyle({}, { stick: { radius: 0.13 }, sphere: { scale: 0.22 } });
+  // nunca re-encuadrar solo: mueve la cámara bajo el mouse y desorienta
+  encuadrarSiHaceFalta();
+  visor.render();
+  if (pie) $('pie3d').textContent = pie;
+}
+
+function mostrarGeometria() {
+  if (!ultimaGeometria || !window.$3Dmol) return;
+  $('sinGeo').hidden = true;
+  asegurarVisor();
+  visor.clear();
+  visor.addModel(ultimaGeometria.xyz ?? ultimaGeometria.molfile, ultimaGeometria.xyz ? 'xyz' : 'mol');
+  visor.setStyle({}, { stick: { radius: 0.13 }, sphere: { scale: 0.22 } });
+  encuadrarSiHaceFalta();
+  visor.render();
+  $('pie3d').textContent = ultimaGeometria.nivel === 'GFN2'
+    ? `${ultimaGeometria.n} átomos · geometría optimizada con GFN2`
+    : `${ultimaGeometria.n} átomos · geometría MMFF94 = ${ultimaGeometria.E.toFixed(2)} kcal/mol`;
+}
+
+function verVista(v) {
+  const bs = [...document.querySelectorAll('.vistas button')];
+  bs.forEach((x) => x.classList.toggle('activa', x.dataset.v === v));
+  $('caja2d').hidden = v === '3d';
+  $('caja3d').hidden = v !== '3d';
+  if (v === '3d') {
+    if (visor) { visor.resize(); encuadrarSiHaceFalta(); visor.render(); }
+    if (geo) $('taller').hidden = false;
+  }
+}
+
+document.querySelector('.vistas').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  verVista(b.dataset.v);
+  if (b.dataset.v === '3d') mostrarGeometria();
+});
+
+
+// ─────────────────── taller: mover átomos y reoptimizar ───────────────────
+const BOHR_A = 0.529177210903;
+
+function geoAXyz(g, titulo) {
+  const l = [String(g.Z.length), titulo || 'geometria'];
+  for (let i = 0; i < g.Z.length; i++)
+    l.push(`${g.et[i]} ${g.xyz[i*3].toFixed(5)} ${g.xyz[i*3+1].toFixed(5)} ${g.xyz[i*3+2].toFixed(5)}`);
+  return l.join('\n');
+}
+
+function pintarGeo(pie) {
+  if (!geo) return;
+  dibujarCuadro(geoAXyz(geo), pie);
+  $('taller').hidden = false;
+}
+
+$('encuadrar').onclick = () => { if (visor) { visor.zoomTo(); visor.render(); } };
+
+// tras minimizar cambian los descriptores electrónicos; los 2D de RDKit no
+let ultimoResultado = null;
+function actualizarElectronicos(res, calc) {
+  if (!ultimoResultado) return;
+  const { r, t } = ultimoResultado;
+  const en = vec(res.orbitalEnergies), oc = vec(res.orbitalOccupations);
+  const nocc = oc.filter((o) => o > 0.5).length;
+  r.homo = en[nocc-1] * HA2EV; r.lumo = en[nocc] * HA2EV; r.gap = r.lumo - r.homo;
+  const q = vec(res.atomicCharges), ad = res.atomicDipoles, P = calc.positions();
+  const mu = [0, 0, 0];
+  for (let i = 0; i < q.length; i++) for (let k = 0; k < 3; k++) mu[k] += q[i]*P.get(k,i) + ad.get(k,i);
+  r.dipolo = Math.hypot(...mu) * AU2D;
+  r.convergio = res.converged;
+  pintar(r, t);
+}
+
+function nuevoCalculador() {
+  // ojo: el constructor de Molecule toma ángstrom, mientras que positions() devuelve bohr
+  const pm = OCC.Mat3N.create(geo.Z.length);
+  for (let i = 0; i < geo.Z.length; i++)
+    for (let k = 0; k < 3; k++) pm.set(k, i, geo.xyz[i*3+k]);
+  const mol = new OCC.Molecule(OCC.IVec.fromArray(geo.Z), pm);
+  return OCC.XtbCalculator.fromMolecule(mol, OCC.XtbMethod.GFN2);
+}
+
+// Un desplazamiento cartesiano puede comprimir un enlace hasta donde el SCF deja de
+// converger. Se exige distancia mínima absoluta y que ningún par ya cercano se acorte
+// más de un 12 %; si no se cumple, se reduce la amplitud.
+function distanciaMinima(v, n) {
+  let d2 = Infinity;
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+    const dx=v[i*3]-v[j*3], dy=v[i*3+1]-v[j*3+1], dz=v[i*3+2]-v[j*3+2];
+    const d = dx*dx+dy*dy+dz*dz; if (d < d2) d2 = d;
+  }
+  return Math.sqrt(d2);
+}
+function sano(v, base, n) {
+  if (distanciaMinima(v, n) < 0.95) return false;
+  const dist = (w,i,j) => Math.hypot(w[i*3]-w[j*3], w[i*3+1]-w[j*3+1], w[i*3+2]-w[j*3+2]);
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+    const d0 = dist(base,i,j);
+    if (d0 < 1.9 && dist(v,i,j) < d0 * 0.88) return false;
+  }
+  return true;
+}
+
+$('distorsionar').onclick = () => {
+  if (!geo) { estado('Primero calculá una molécula.', true); return; }
+  const pedida = Math.abs(parseFloat($('ampDist').value) || 0.12);
+  const n = geo.Z.length, base = geo.xyz.slice();
+  let v = null, usada = 0;
+  for (let escala = 1; escala >= 0.2; escala -= 0.2) {
+    for (let intento = 0; intento < 8; intento++) {
+      const w = base.slice();
+      for (let i = 0; i < n; i++) {
+        let x=Math.random()*2-1, y=Math.random()*2-1, z=Math.random()*2-1;
+        const m = Math.hypot(x,y,z) || 1, d = pedida * escala / m;
+        w[i*3]+=x*d; w[i*3+1]+=y*d; w[i*3+2]+=z*d;
+      }
+      if (sano(w, base, n)) { v = w; usada = pedida * escala; break; }
+    }
+    if (v) break;
+  }
+  if (!v) { estado('Esa amplitud deforma demasiado los enlaces. Probá con menos.', true); return; }
+  geo.xyz = v; geo.nivel = 'distorsionada';
+  pintarGeo(`${n} átomos · distorsionada ${usada.toFixed(2)} Å`);
+  const aviso = usada < pedida * 0.99 ? ` (se bajó de ${pedida.toFixed(2)} para no romper enlaces)` : '';
+  estado(`Cada átomo corrido ${usada.toFixed(2)} Å al azar${aviso}. Minimizá para verla volver.`);
+};
+
+$('reoptimizar').onclick = async () => {
+  if (!geo) { estado('Primero calculá una molécula.', true); return; }
+  $('reoptimizar').disabled = true;
+  const t0 = performance.now();
+  try {
+    const calc = nuevoCalculador();
+    const o = await optimizarGFN2(calc, geo.Z.length, (p, dE, f, pos) => {
+      estado(`Minimizando: paso ${p}, ${(dE * 627.509).toFixed(1)} kcal/mol, |F|max ${f.toExponential(1)}`);
+      for (let i = 0; i < pos.length; i++) geo.xyz[i] = pos[i] * BOHR_A;
+      pintarGeo(`paso ${p} · ΔE ${(dE * 627.509).toFixed(2)} kcal/mol · |F|max ${f.toExponential(1)}`);
+    });
+    const P = calc.positions();
+    for (let i = 0; i < geo.Z.length; i++)
+      for (let k = 0; k < 3; k++) geo.xyz[i*3+k] = P.get(k, i) * BOHR_A;
+    geo.nivel = 'GFN2';
+    pintarGeo(`${geo.Z.length} átomos · minimizada con GFN2`);
+    actualizarElectronicos(o.res, calc);
+    estado(`Minimizado en ${((performance.now()-t0)/1000).toFixed(1)} s: ${o.pasos} pasos, ${o.dE.toFixed(1)} kcal/mol, |F|max ${o.fuerzaMax.toExponential(1)}${o.convergio ? '' : ' (no convergió)'}. Descriptores actualizados.`);
+  } catch (e) {
+    { const m = leerError(e);
+      estado('Error al minimizar: ' + m + (/converge/i.test(m) ? ' — probá una distorsión menor.' : ''), true); }
+  } finally { $('reoptimizar').disabled = false; }
+};
+
+// ───────────────────────── editor de estructuras ─────────────────────────
+registerCustomElement();
+const editor = $('editor');
+$('delDibujo').addEventListener('click', () => {
+  try {
+    const m = editor.getMolecule();
+    if (!m || m.getAllAtoms() === 0) { estado('El dibujo está vacío.', true); return; }
+    $('smiles').value = m.toSmiles();
+    estado('SMILES tomado del dibujo.');
+  } catch (e) { estado('No se pudo leer el dibujo: ' + e, true); }
+});
+$('alDibujo').addEventListener('click', () => {
+  try {
+    const m = OCL.Molecule.fromSmiles($('smiles').value.trim());
+    m.inventCoordinates();
+    editor.setMolecule(m);
+    estado('Estructura llevada al dibujo.');
+  } catch (e) { estado('SMILES inválido: ' + e, true); }
+});
+
+// ───────────────────────────── pestañas ─────────────────────────────
+let dockingPreparado = false;
+$('pestanas').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  [...$('pestanas').children].forEach((x) => x.classList.toggle('activa', x === b));
+  $('panel-descriptores').hidden = b.dataset.p !== 'descriptores';
+  $('panel-docking').hidden = b.dataset.p !== 'docking';
+  $('panel-complejo').hidden = b.dataset.p !== 'complejo';
+  $('panel-ayuda').hidden = b.dataset.p !== 'ayuda';
+  if (b.dataset.p === 'complejo') mostrarComplejo();
+  if (b.dataset.p === 'docking' && !dockingPreparado) {
+    dockingPreparado = true;
+    prepararDocking().catch((err) => dockEstado('No se pudo preparar el docking: ' + err, true));
+  }
+});
+
+// ───────────────────────────── docking ─────────────────────────────
+const dockEstado = (t, err) => { const e = $('dockEstado'); e.textContent = t; e.classList.toggle('error', !!err); };
+let OB, WEBINA, receptorTxt = '', ultimaPose = '';
+
+function cargarScript(src) {
+  return new Promise((ok, mal) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = ok; s.onerror = () => mal(new Error('no se pudo cargar ' + src));
+    document.head.appendChild(s);
+  });
+}
+
+// caja sugerida por receptor: al elegir 2B6A quedan los parámetros del TP
+const CAJA_POR_RECEPTOR = {
+  'datos/receptor-proteasa-hiv-4LL3.pdbqt': { cx: -9.815, cy: 15.200, cz: 26.964, sx: 20, sy: 20, sz: 20, ex: 8 },
+  'datos/2B6A_receptor.pdbqt': { cx: 145.876, cy: -24.851, cz: 74.796, sx: 31, sy: 31, sz: 31, ex: 10 },
+};
+function aplicarCaja(v) {
+  const c = CAJA_POR_RECEPTOR[v];
+  if (!c) return;
+  $('cx').value = c.cx; $('cy').value = c.cy; $('cz').value = c.cz;
+  $('sx').value = c.sx; $('sy').value = c.sy; $('sz').value = c.sz;
+  $('ex').value = c.ex;
+}
+
+async function prepararDocking() {
+  if (!self.crossOriginIsolated) {
+    $('panel-docking').querySelector('.columnas').insertAdjacentHTML('beforebegin',
+      '<div class="aviso">El docking necesita las cabeceras COOP y COEP, que habilitan <code>SharedArrayBuffer</code>. ' +
+      'Esta página se está sirviendo sin ellas, así que Vina no puede arrancar. Levantala con <code>servir.bat</code> ' +
+      '(o <code>python servidor.py</code>) y el docking queda disponible. Los descriptores funcionan igual.</div>');
+    $('dockear').textContent = 'No disponible sin las cabeceras';
+    return;
+  }
+  dockEstado('Cargando OpenBabel…');
+  await cargarScript('lib/openbabel/openbabel.js');
+  // Emscripten viejo: no expone .ready, avisa por onRuntimeInitialized
+  const mod = window.OpenBabelModule({
+    locateFile: (f) => 'lib/openbabel/' + f,
+    print: () => {}, printErr: () => {},
+  });
+  await new Promise((ok) => { mod.calledRun ? ok() : (mod.onRuntimeInitialized = ok); });
+  OB = mod;
+  dockEstado('Cargando Vina…');
+  WEBINA = (await import('./lib/Webina/vina.1.0.5.js')).default;
+  aplicarCaja($('receptor').value);
+  receptorTxt = await (await fetch($('receptor').value)).text();
+  $('receptorEstado').textContent = `Receptor cargado: ${receptorTxt.split('\n').length} líneas.`;
+  $('dockear').disabled = false;
+  $('dockear').textContent = 'Dockear';
+  dockEstado('Listo.');
+}
+
+$('receptor').addEventListener('change', async () => {
+  const v = $('receptor').value;
+  if (!v) { $('receptorArchivo').click(); return; }
+  aplicarCaja(v);
+  receptorTxt = await (await fetch(v)).text(); receptorNombre = v;
+  $('receptorEstado').textContent = `Receptor cargado: ${receptorTxt.split('\n').length} líneas.`;
+});
+$('receptorArchivo').addEventListener('change', async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  receptorTxt = await f.text(); receptorNombre = f.name;
+  $('receptorEstado').textContent = `Receptor "${f.name}": ${receptorTxt.split('\n').length} líneas.`;
+});
+
+function ligandoAPDBQT(smiles) {
+  const mol = OCL.Molecule.fromSmiles(smiles);
+  const conf = new OCL.ConformerGenerator(Date.now() & 0xffff).getOneConformerAsMolecule(mol);
+  if (!conf) throw new Error('no se pudo generar un confórmero del ligando');
+  new OCL.ForceFieldMMFF94(conf, OCL.ForceFieldMMFF94.MMFF94).minimise();
+  const conv = new OB.ObConversionWrapper();
+  conv.setInFormat('', 'mol');
+  const obmol = new OB.OBMol();
+  conv.readString(obmol, conf.toMolfile());
+  obmol.AddHydrogensWithParam(false, true, 7.4);   // hidrógenos a pH fisiológico
+  conv.setOutFormat('', 'pdbqt');                  // con árbol de torsiones: ligando flexible
+  const txt = conv.writeString(obmol, false);
+  obmol.delete(); conv.delete();
+  return txt;
+}
+
+$('dockear').addEventListener('click', async () => {
+  const smiles = $('smiles').value.trim();
+  if (!smiles) { dockEstado('Falta el SMILES, en la pestaña de descriptores.', true); return; }
+  if (!receptorTxt) { dockEstado('Falta el receptor.', true); return; }
+  $('dockear').disabled = true;
+  const t0 = performance.now();
+  try {
+    dockEstado('Preparando el ligando…');
+    const ligando = await new Promise((ok, mal) => setTimeout(() => {
+      try { ok(ligandoAPDBQT(smiles)); } catch (e) { mal(e); } }, 10));
+
+    dockEstado('Dockeando. Puede tardar uno o dos minutos…');
+    const params = {
+      center_x: +$('cx').value, center_y: +$('cy').value, center_z: +$('cz').value,
+      size_x: +$('sx').value, size_y: +$('sy').value, size_z: +$('sz').value,
+      exhaustiveness: +$('ex').value, energy_range: 3, cpu: +$('cpu').value,
+    };
+    const { pose, out } = await new Promise((resolve) => {
+      let stdout = '', iniciado = null;
+      const mod = new WEBINA({
+        noInitialRun: true,
+        locateFile: (p) => 'lib/Webina/' + p,
+        preRun: [function (This) {
+          This.FS.writeFile('/receptor.pdbqt', receptorTxt);
+          This.FS.writeFile('/ligand.pdbqt', ligando);
+          iniciado = This;
+        }],
+        print: (t) => { stdout += t + '\n'; },
+        printErr: () => {},
+        onExit: () => {
+          let p = '';
+          try { p = iniciado.FS.readFile('/ligand_out.pdbqt', { encoding: 'utf8' }); } catch {}
+          resolve({ pose: p, out: stdout });
+        },
+      });
+      Promise.resolve(mod).then((m) => (m && m.ready) ? m.ready : m).then((m) => {
+        const args = [];
+        for (const [k, v] of Object.entries(params)) { args.push('--' + k, String(v)); }
+        args.push('--receptor', '/receptor.pdbqt', '--ligand', '/ligand.pdbqt', '--out', '/ligand_out.pdbqt');
+        m.callMain(args);
+      });
+    });
+
+    ultimaPose = pose;
+    if (pose) cargarPoses(pose, 'del último docking');
+    const filas = pose.split('\n').filter((l) => l.includes('VINA RESULT'))
+      .map((l) => l.trim().split(/\s+/).slice(3).map(Number));
+    if (!filas.length) { dockEstado('Vina no devolvió poses. Revisá la salida.', true); }
+    else {
+      $('poses').innerHTML = '<div class="desborde"><table><thead><tr><th>Pose</th>' +
+        '<th>ΔG<sub>dock</sub> (kcal/mol)</th><th>RMSD inf.</th><th>RMSD sup.</th></tr></thead><tbody>' +
+        filas.map((f, i) => `<tr><td>${i + 1}</td><td>${f[0].toFixed(3)}</td><td>${f[1].toFixed(3)}</td><td>${f[2].toFixed(3)}</td></tr>`).join('') +
+        '</tbody></table></div>';
+      dockEstado(`Listo en ${((performance.now() - t0) / 1000).toFixed(0)} s. Mejor pose: ${filas[0][0].toFixed(3)} kcal/mol.`);
+    }
+    $('vinaSalida').textContent = out.trim() || '—';
+  } catch (e) {
+    dockEstado('Error: ' + leerError(e), true);
+  } finally {
+    $('dockear').disabled = false;
+  }
+});
+
+$('bajarPose').addEventListener('click', () => {
+  if (!ultimaPose) { dockEstado('Todavía no hay poses.', true); return; }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([ultimaPose], { type: 'text/plain' }));
+  a.download = 'poses.pdbqt'; a.click(); URL.revokeObjectURL(a.href);
+});
+
+$('bajarSalida').addEventListener('click', () => {
+  const params = {
+    center_x: $('cx').value, center_y: $('cy').value, center_z: $('cz').value,
+    size_x: $('sx').value, size_y: $('sy').value, size_z: $('sz').value,
+    exhaustiveness: $('ex').value, energy_range: 3, cpu: $('cpu').value,
+  };
+  const txt = [
+    '# BetaTools — corrida de docking',
+    `# Receptor: ${$('receptor').value || 'subido'}`,
+    `# Ligando (SMILES): ${$('smiles').value.trim() || '—'}`,
+    '# Parámetros:',
+    ...Object.entries(params).map(([k, v]) => `#   ${k} = ${v}`),
+    '',
+    $('vinaSalida').textContent.trim() || '—',
+    '',
+  ].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([txt], { type: 'text/plain' }));
+  a.download = 'vina_salida.txt'; a.click(); URL.revokeObjectURL(a.href);
+});
+
+// ────────────── complejo: la pose en el sitio y el mapa de interacciones ──────────────
+// Vina sólo devuelve coordenadas y un ΔG. Las interacciones que se dibujan acá salen de
+// medir la pose: son geometría, no términos de la función de scoring.
+const COLOR_INT = {
+  'puente H':      '#2f7fa8',
+  'hidrofóbica':   '#a8894a',
+  'π–π':           '#3f7a63',
+  'halógeno':      '#684d5e',
+  'puente salino': '#a0523a',
+};
+const TIPO_ELEM = { A:'C', C:'C', N:'N', NA:'N', NS:'N', O:'O', OA:'O', OS:'O', S:'S', SA:'S',
+  HD:'H', H:'H', F:'F', CL:'Cl', BR:'Br', I:'I', P:'P', MG:'Mg', ZN:'Zn', MN:'Mn', CA:'Ca', FE:'Fe' };
+const ACEPTORES = new Set(['OA', 'NA', 'SA']);
+// el ligando se distingue por el color del carbono; el resto de los elementos, el de siempre
+const CARBONO_LIG = { prop: 'elem', map: Object.assign({}, $3Dmol.elementColors.defaultColors, { C: 0x5b4453 }) };
+const ANILLOS_RES = {
+  PHE: [['CG','CD1','CE1','CZ','CE2','CD2']],
+  TYR: [['CG','CD1','CE1','CZ','CE2','CD2']],
+  HIS: [['CG','ND1','CE1','NE2','CD2']],
+  TRP: [['CG','CD1','NE1','CE2','CD2'], ['CD2','CE2','CZ2','CH2','CZ3','CE3']],
+};
+const CATION_RES = { ARG: ['NE','NH1','NH2'], LYS: ['NZ'], HIS: ['ND1','CE1','NE2'] };
+const ANION_RES  = { ASP: ['OD1','OD2'], GLU: ['OE1','OE2'] };
+
+const cEstado = (t, err) => { const e = $('complejoEstado'); e.textContent = t; e.classList.toggle('error', !!err); };
+let visorC = null, posesC = [], interActual = [], verSup = false, verDist = true, verCinta = true, poseRenderizada = -1;
+// un "conjunto" es un archivo cargado: sus poses y, si vino de un .dlg, sus clusters
+let conjuntos = [], conjActual = 0, modoVista = 'pose', claveRender = '', avisoC = '';
+let receptorNombre = '', verCaja = true;
+const COLOR_CLUSTER = ['#5b4453', '#2f7fa8', '#a8894a', '#3f7a63', '#a0523a', '#684d5e',
+  '#7a6f9b', '#4f7d4f', '#b06a86', '#56707d'];
+// del undécimo cluster en adelante, gris: en docking ciego hay decenas y el color deja de informar
+const colorCluster = (k) => COLOR_CLUSTER[k] || '#8c8578';
+
+function leerPDBQT(txt) {
+  const at = [];
+  for (const l of txt.split('\n')) {
+    if (!/^(ATOM|HETATM)/.test(l)) continue;
+    const t = l.slice(77, 79).trim() || l.slice(12, 14).trim();
+    at.push({
+      nombre: l.slice(12, 16).trim(), res: l.slice(17, 20).trim(),
+      cad: l.slice(21, 22).trim(), num: parseInt(l.slice(22, 26)) || 0,
+      x: +l.slice(30, 38), y: +l.slice(38, 46), z: +l.slice(46, 54),
+      t, el: TIPO_ELEM[t.toUpperCase()] || t.slice(0, 1),
+    });
+  }
+  return at;
+}
+
+function separarPoses(txt) {
+  const poses = []; let act = null;
+  for (const l of txt.split('\n')) {
+    if (l.startsWith('MODEL')) { act = { lineas: [], dg: null }; continue; }
+    if (l.startsWith('ENDMDL')) { if (act) poses.push(act); act = null; continue; }
+    if (!act) act = { lineas: [], dg: null };
+    if (l.includes('VINA RESULT')) act.dg = parseFloat(l.trim().split(/\s+/)[3]);
+    act.lineas.push(l);
+  }
+  if (act && act.lineas.some((l) => /^(ATOM|HETATM)/.test(l))) poses.push(act);
+  return poses.filter((p) => p.lineas.some((l) => /^(ATOM|HETATM)/.test(l)));
+}
+
+// ── AutoDock 4 / AutoDock-GPU: el .dlg ──
+// Las líneas de coordenadas vienen con el prefijo "DOCKED: "; sacado el prefijo son PDBQT
+// común, así que el resto de la pestaña no cambia. Los clusters NO se recalculan acá: se
+// leen de la RMSD TABLE que escribe el propio AutoDock, con su tolerancia de rms.
+function leerDLG(txt) {
+  const lineas = txt.split('\n');
+  // el encabezado dice contra qué receptor se corrió y dónde estaba la caja
+  const campo = (re) => { const m = txt.match(re); return m ? m : null; };
+  const trio = (re) => { const m = campo(re); return m ? [+m[1], +m[2], +m[3]] : null; };
+  const meta = {
+    receptor: (campo(/^Receptor name:\s*(\S+)/m) || [])[1] || null,
+    centro: trio(/^Grid center \(x, y, z\):\s*(-?[\d.]+), (-?[\d.]+), (-?[\d.]+)/m),
+    tam: trio(/^Grid size \(x, y, z\):\s*([\d.]+), ([\d.]+), ([\d.]+)/m),
+    espaciado: +((campo(/^Grid spacing:\s*([\d.]+)/m) || [])[1]) || null,
+    rmstol: +((campo(/^RMSD tolerance:\s*([\d.]+)/m) || [])[1]) || null,
+    nrun: +((campo(/^Number of runs:\s*(\d+)/m) || [])[1]) || null,
+  };
+  const poses = []; let act = null;
+  for (const raw of lineas) {
+    if (!raw.startsWith('DOCKED:')) continue;
+    const l = raw.slice(8);
+    if (l.startsWith('MODEL')) { act = { lineas: [], dg: null, run: parseInt(l.slice(5)) || poses.length + 1 }; continue; }
+    if (l.startsWith('ENDMDL')) { if (act) poses.push(act); act = null; continue; }
+    if (!act) continue;
+    if (l.includes('Estimated Free Energy of Binding')) {
+      const m = l.match(/=\s*([-+]?\d+\.?\d*)/); if (m) act.dg = parseFloat(m[1]);
+    } else if (/USER\s+Run\s*=\s*\d+/.test(l)) {
+      act.run = +l.match(/Run\s*=\s*(\d+)/)[1];
+    }
+    act.lineas.push(l);
+  }
+  if (act && act.lineas.some((l) => /^(ATOM|HETATM)/.test(l))) poses.push(act);
+  const buenas = poses.filter((p) => p.lineas.some((l) => /^(ATOM|HETATM)/.test(l)));
+
+  // RMSD TABLE → rank | sub-rank | run | binding energy | cluster RMSD | reference RMSD
+  const porRun = new Map(buenas.map((p) => [p.run, p]));
+  const cl = new Map();
+  let enTabla = false;
+  for (const l of lineas) {
+    if (l.includes('RMSD TABLE')) { enTabla = true; continue; }
+    if (!enTabla) continue;
+    // ojo: AutoDock escribe las energías positivas con signo "+" ("+0.42"), hay que aceptarlo
+    const m = l.match(/^\s*(\d+)\s+(\d+)\s+(\d+)\s+([-+]?\d+\.\d+)\s+([-+]?\d+\.\d+)\s+([-+]?\d+\.\d+)/);
+    if (!m) continue;
+    const rank = +m[1], run = +m[3], dg = +m[4];
+    const p = porRun.get(run);
+    if (p) { p.cluster = rank; p.sub = +m[2]; p.rmsdCluster = +m[5]; p.rmsdRef = +m[6]; if (p.dg === null) p.dg = dg; }
+    if (!cl.has(rank)) cl.set(rank, { rank, runs: [], dgs: [] });
+    cl.get(rank).runs.push(run); cl.get(rank).dgs.push(dg);
+  }
+  const clusters = [...cl.values()].sort((a, b) => a.rank - b.rank).map((c) => ({
+    rank: c.rank, runs: c.runs, n: c.runs.length,
+    mejor: Math.min(...c.dgs),
+    media: c.dgs.reduce((s, x) => s + x, 0) / c.dgs.length,
+  }));
+  // presentar las poses en el orden del ranking de AutoDock, no en el de las corridas
+  if (clusters.length) buenas.sort((a, b) => (a.cluster - b.cluster) || (a.sub - b.sub));
+  return { poses: buenas, clusters, meta };
+}
+
+// a qué posición de la lista de poses corresponde cada miembro de cada cluster
+function indexarClusters(c) {
+  const porRank = new Map(c.clusters.map((x) => [x.rank, (x.idx = [])]));
+  c.poses.forEach((p, i) => { const a = porRank.get(p.cluster); if (a) a.push(i); });
+  for (const x of c.clusters) x.idx.sort((a, b) => (c.poses[a].dg ?? 0) - (c.poses[b].dg ?? 0));
+  return c;
+}
+
+// "6W63_3CLpro_receptor" (lo que dice el .dlg) contra "6W63_3CLpro_receptor.pdbqt" (el archivo)
+const limpiarNombre = (n) => n.replace(/^.*[\\/]/, '').replace(/\.(pdbqt|pdb)$/i, '').toLowerCase();
+function mismoReceptor(a, b) {
+  const x = limpiarNombre(a), y = limpiarNombre(b);
+  return x === y || x.includes(y) || y.includes(x);
+}
+
+function leerConjunto(txt, nombre) {
+  if (/^DOCKED:/m.test(txt)) {
+    const r = leerDLG(txt);
+    return indexarClusters({ nombre, tipo: 'dlg', poses: r.poses, clusters: r.clusters, meta: r.meta });
+  }
+  return { nombre, tipo: 'pdbqt', poses: separarPoses(txt), clusters: [], meta: {} };
+}
+
+// geometría elemental
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+const resta = (a, b) => [a.x - b.x, a.y - b.y, a.z - b.z];
+const punto = (u, v) => u[0]*v[0] + u[1]*v[1] + u[2]*v[2];
+const norma = (u) => Math.hypot(u[0], u[1], u[2]);
+function anguloEn(a, b, c) {       // ángulo a–b–c en grados
+  const u = resta(a, b), v = resta(c, b);
+  const d = punto(u, v) / ((norma(u) * norma(v)) || 1);
+  return Math.acos(Math.max(-1, Math.min(1, d))) * 180 / Math.PI;
+}
+const centroide = (ps) => ({
+  x: ps.reduce((s, p) => s + p.x, 0) / ps.length,
+  y: ps.reduce((s, p) => s + p.y, 0) / ps.length,
+  z: ps.reduce((s, p) => s + p.z, 0) / ps.length,
+});
+function normalNewell(ps) {        // normal del plano de un anillo, en orden cíclico
+  let nx = 0, ny = 0, nz = 0;
+  for (let i = 0; i < ps.length; i++) {
+    const a = ps[i], b = ps[(i + 1) % ps.length];
+    nx += (a.y - b.y) * (a.z + b.z);
+    ny += (a.z - b.z) * (a.x + b.x);
+    nz += (a.x - b.x) * (a.y + b.y);
+  }
+  const m = Math.hypot(nx, ny, nz) || 1;
+  return [nx / m, ny / m, nz / m];
+}
+
+// conectividad por distancia: alcanza para un PDBQT, que no trae CONECT
+function radioEnlace(a, b) {
+  const g = (e) => (e === 'H' ? 0.37 : e === 'S' || e === 'P' || e === 'Cl' || e === 'Br' || e === 'I' ? 1.05 : 0.77);
+  return g(a.el) + g(b.el) + 0.45;
+}
+function conectar(at) {
+  const ady = at.map(() => []);
+  for (let i = 0; i < at.length; i++)
+    for (let j = i + 1; j < at.length; j++)
+      if (dist(at[i], at[j]) < radioEnlace(at[i], at[j])) { ady[i].push(j); ady[j].push(i); }
+  return ady;
+}
+
+// anillos de 5 y 6 del ligando, en orden cíclico, con control de planaridad
+function anillosLigando(at, ady) {
+  const pesados = at.map((a, i) => (a.el === 'H' ? -1 : i));
+  const salida = [], vistos = new Set();
+  for (let s = 0; s < at.length; s++) {
+    if (pesados[s] < 0) continue;
+    const pila = [[s, [s]]];
+    while (pila.length) {
+      const [u, cam] = pila.pop();
+      for (const v of ady[u]) {
+        if (at[v].el === 'H') continue;
+        if (v === s && cam.length >= 5 && cam.length <= 6) {
+          const k = [...cam].sort((a, b) => a - b).join(',');
+          if (!vistos.has(k)) { vistos.add(k); salida.push(cam.slice()); }
+        } else if (v > s && !cam.includes(v) && cam.length < 6) pila.push([v, [...cam, v]]);
+      }
+    }
+  }
+  return salida.filter((ciclo) => {
+    const ps = ciclo.map((i) => at[i]);
+    if (ps.filter((a) => a.t === 'A' || a.t === 'NA').length < 3) return false;  // aromático
+    const c = centroide(ps), n = normalNewell(ps);
+    return ps.every((p) => Math.abs(punto(resta(p, c), n)) < 0.3);               // plano
+  }).map((ciclo) => {
+    const ps = ciclo.map((i) => at[i]);
+    return { idx: ciclo, c: centroide(ps), n: normalNewell(ps) };
+  });
+}
+function anillosReceptor(at) {
+  const porRes = new Map();
+  at.forEach((a, i) => {
+    const k = a.cad + '|' + a.num + '|' + a.res;
+    if (!porRes.has(k)) porRes.set(k, []);
+    porRes.get(k).push(i);
+  });
+  const salida = [];
+  for (const [k, idxs] of porRes) {
+    const res = k.split('|')[2];
+    for (const nombres of (ANILLOS_RES[res] || [])) {
+      const ps = nombres.map((nm) => idxs.find((i) => at[i].nombre === nm));
+      if (ps.some((i) => i === undefined)) continue;
+      const pts = ps.map((i) => at[i]);
+      salida.push({ idx: ps, c: centroide(pts), n: normalNewell(pts), res: at[ps[0]] });
+    }
+  }
+  return salida;
+}
+
+// grupos cargados
+function cargasReceptor(at) {
+  const porRes = new Map();
+  at.forEach((a, i) => {
+    const k = a.cad + '|' + a.num + '|' + a.res;
+    if (!porRes.has(k)) porRes.set(k, []);
+    porRes.get(k).push(i);
+  });
+  const g = [];
+  for (const [k, idxs] of porRes) {
+    const res = k.split('|')[2];
+    for (const [tabla, signo] of [[CATION_RES, +1], [ANION_RES, -1]]) {
+      const nombres = tabla[res]; if (!nombres) continue;
+      const ps = idxs.filter((i) => nombres.includes(at[i].nombre));
+      if (ps.length) g.push({ c: centroide(ps.map((i) => at[i])), signo, ref: at[ps[0]] });
+    }
+  }
+  return g;
+}
+function cargasLigando(at, ady) {
+  const g = [];
+  for (let i = 0; i < at.length; i++) {
+    const vec = ady[i].map((j) => at[j]);
+    if (at[i].el === 'C') {
+      const ox = ady[i].filter((j) => at[j].el === 'O');
+      // carboxilato: dos oxígenos y ninguno protonado
+      if (ox.length === 2 && !ox.some((j) => ady[j].some((h) => at[h].el === 'H')))
+        g.push({ c: centroide([at[i], ...ox.map((j) => at[j])]), signo: -1, ref: at[i] });
+      // guanidinio o amidinio
+      const ns = ady[i].filter((j) => at[j].el === 'N');
+      if (ns.length >= 3) g.push({ c: centroide([at[i], ...ns.map((j) => at[j])]), signo: +1, ref: at[i] });
+    }
+    if ((at[i].el === 'S' || at[i].el === 'P') && ady[i].filter((j) => at[j].el === 'O').length >= 3)
+      g.push({ c: centroide([at[i], ...ady[i].filter((j) => at[j].el === 'O').map((j) => at[j])]), signo: -1, ref: at[i] });
+    if (at[i].el === 'N') {
+      const pes = ady[i].filter((j) => at[j].el !== 'H');
+      const hs = ady[i].filter((j) => at[j].el === 'H');
+      if (pes.length >= 4 || (pes.length === 1 && hs.length >= 3)) g.push({ c: { ...at[i] }, signo: +1, ref: at[i] });
+    }
+  }
+  return g;
+}
+
+function donantes(at, ady) {       // heteroátomo con hidrógeno polar colgado
+  const d = [];
+  at.forEach((a, i) => {
+    if (!['N', 'O', 'S'].includes(a.el)) return;
+    for (const j of ady[i]) if (at[j].el === 'H') d.push({ D: i, H: j });
+  });
+  return d;
+}
+
+const etiqueta = (a) => `${a.res}${a.num}${a.cad ? ' ' + a.cad : ''}`;
+
+function analizar(rec, lig) {
+  const adyR = null;               // el receptor no necesita conectividad completa
+  const adyL = conectar(lig);
+  const out = [];
+
+  // caja alrededor del ligando: recorta el receptor a lo que puede tocar
+  const lim = 6.5;
+  const bb = ['x', 'y', 'z'].map((k) => [Math.min(...lig.map((a) => a[k])) - lim, Math.max(...lig.map((a) => a[k])) + lim]);
+  const cerca = [];
+  rec.forEach((a, i) => {
+    if (a.x > bb[0][0] && a.x < bb[0][1] && a.y > bb[1][0] && a.y < bb[1][1] && a.z > bb[2][0] && a.z < bb[2][1])
+      cerca.push(i);
+  });
+  // hidrógenos del receptor, atados a su pesado más cercano
+  const hRec = new Map();
+  for (const i of cerca) {
+    if (rec[i].el !== 'H') continue;
+    let mejor = -1, dm = 1.3;
+    for (const j of cerca) if (rec[j].el !== 'H' && dist(rec[i], rec[j]) < dm) { dm = dist(rec[i], rec[j]); mejor = j; }
+    if (mejor >= 0) { if (!hRec.has(mejor)) hRec.set(mejor, []); hRec.get(mejor).push(i); }
+  }
+
+  // ── puentes de hidrógeno ──
+  const donL = donantes(lig, adyL);
+  for (const { D, H } of donL) {
+    for (const j of cerca) {
+      if (!ACEPTORES.has(rec[j].t)) continue;
+      const dDA = dist(lig[D], rec[j]), dHA = dist(lig[H], rec[j]);
+      const ang = anguloEn(lig[D], lig[H], rec[j]);
+      if (dDA <= 3.5 && dHA <= 2.6 && ang >= 130)
+        out.push({ tipo: 'puente H', residuo: etiqueta(rec[j]), atRes: rec[j].nombre, atLig: lig[D].nombre || lig[D].el,
+          d: dDA, ang, rol: 'ligando dona', a: lig[D], b: rec[j] });
+    }
+  }
+  for (const [Di, Hs] of hRec) {
+    for (const H of Hs) {
+      for (let k = 0; k < lig.length; k++) {
+        if (!ACEPTORES.has(lig[k].t)) continue;
+        const dDA = dist(rec[Di], lig[k]), dHA = dist(rec[H], lig[k]);
+        const ang = anguloEn(rec[Di], rec[H], lig[k]);
+        if (dDA <= 3.5 && dHA <= 2.6 && ang >= 130)
+          out.push({ tipo: 'puente H', residuo: etiqueta(rec[Di]), atRes: rec[Di].nombre, atLig: lig[k].nombre || lig[k].el,
+            d: dDA, ang, rol: 'receptor dona', a: lig[k], b: rec[Di] });
+      }
+    }
+  }
+
+  // ── hidrofóbicas: carbono contra carbono, uno por residuo ──
+  const apolar = (a, ady, todos) => a.el === 'C' && !ady.some((j) => ['N', 'O'].includes(todos[j].el));
+  const mejoresH = new Map();
+  for (let k = 0; k < lig.length; k++) {
+    if (!apolar(lig[k], adyL[k], lig)) continue;
+    for (const j of cerca) {
+      if (rec[j].el !== 'C') continue;
+      const vecinos = cerca.filter((m) => m !== j && dist(rec[j], rec[m]) < 1.8);
+      if (vecinos.some((m) => ['N', 'O'].includes(rec[m].el))) continue;
+      const d = dist(lig[k], rec[j]);
+      if (d > 4.0) continue;
+      const key = etiqueta(rec[j]);
+      if (!mejoresH.has(key) || mejoresH.get(key).d > d)
+        mejoresH.set(key, { tipo: 'hidrofóbica', residuo: key, atRes: rec[j].nombre, atLig: lig[k].nombre || lig[k].el,
+          d, ang: null, rol: '', a: lig[k], b: rec[j] });
+    }
+  }
+  out.push(...mejoresH.values());
+
+  // ── π–π ──
+  const anL = anillosLigando(lig, adyL), anR = anillosReceptor(rec.filter((a, i) => cerca.includes(i)));
+  for (const al of anL) for (const ar of anR) {
+    const d = dist(al.c, ar.c); if (d > 5.5) continue;
+    let ang = Math.acos(Math.max(-1, Math.min(1, Math.abs(punto(al.n, ar.n))))) * 180 / Math.PI;
+    const v = resta(ar.c, al.c);
+    const desp = Math.min(norma(v) * Math.sin(Math.acos(Math.min(1, Math.abs(punto(v, al.n)) / (norma(v) || 1)))),
+                          norma(v) * Math.sin(Math.acos(Math.min(1, Math.abs(punto(v, ar.n)) / (norma(v) || 1)))));
+    const paralela = ang < 30 && desp <= 2.0, enT = ang > 50 && desp <= 3.0;
+    if (paralela || enT)
+      out.push({ tipo: 'π–π', residuo: etiqueta(ar.res), atRes: 'anillo', atLig: 'anillo',
+        d, ang, rol: paralela ? 'paralela' : 'en T', a: al.c, b: ar.c });
+  }
+
+  // ── halógenos ──
+  for (let k = 0; k < lig.length; k++) {
+    if (!['Cl', 'Br', 'I'].includes(lig[k].el)) continue;
+    const c = adyL[k].find((j) => lig[j].el === 'C'); if (c === undefined) continue;
+    for (const j of cerca) {
+      if (!['N', 'O'].includes(rec[j].el)) continue;
+      const d = dist(lig[k], rec[j]); if (d > 4.0) continue;
+      const ang = anguloEn(lig[c], lig[k], rec[j]);
+      if (ang >= 140)
+        out.push({ tipo: 'halógeno', residuo: etiqueta(rec[j]), atRes: rec[j].nombre, atLig: lig[k].el,
+          d, ang, rol: '', a: lig[k], b: rec[j] });
+    }
+  }
+
+  // ── puentes salinos ──
+  const cR = cargasReceptor(cerca.map((i) => rec[i])), cL = cargasLigando(lig, adyL);
+  for (const gl of cL) for (const gr of cR) {
+    if (gl.signo === gr.signo) continue;
+    const d = dist(gl.c, gr.c); if (d > 5.0) continue;
+    out.push({ tipo: 'puente salino', residuo: etiqueta(gr.ref), atRes: gr.ref.nombre, atLig: gl.ref.nombre || gl.ref.el,
+      d, ang: null, rol: gl.signo < 0 ? 'ligando aniónico' : 'ligando catiónico', a: gl.c, b: gr.c });
+  }
+
+  const orden = { 'puente H': 0, 'puente salino': 1, 'π–π': 2, 'halógeno': 3, 'hidrofóbica': 4 };
+  out.sort((p, q) => (orden[p.tipo] - orden[q.tipo]) || (p.d - q.d));
+  return out;
+}
+
+// ── dibujo ──
+function aPDB(txt, comoLigando) {
+  const out = [];
+  for (const l of txt.split('\n')) {
+    if (!/^(ATOM|HETATM)/.test(l)) continue;
+    const t = l.slice(77, 79).trim();
+    const el = (TIPO_ELEM[t.toUpperCase()] || t.slice(0, 1) || 'C').toUpperCase();
+    let b = l.slice(0, 66).padEnd(76, ' ');
+    if (comoLigando) b = 'HETATM' + b.slice(6, 17) + 'LIG' + b.slice(20);
+    out.push(b + (el.length === 1 ? ' ' + el : el.slice(0, 2)));
+  }
+  return out.join('\n') + '\nEND\n';
+}
+
+function pintarComplejo() {
+  const i = +$('poseSel').value;
+  const pose = posesC[i]; if (!pose || !receptorTxt) return;
+  const t0 = performance.now();
+  const rec = leerPDBQT(receptorTxt), lig = leerPDBQT(pose.lineas.join('\n'));
+  interActual = analizar(rec, lig);
+
+  // Quien decide es la geometría, no el nombre: el mismo receptor se guardó con nombres
+  // distintos para la caja enfocada y la ciega (archivos idénticos), así que comparar
+  // nombres daría falsas alarmas. El nombre del .dlg sólo se usa para explicar el aviso.
+  const meta = (conjuntos[conjActual] || {}).meta || {};
+  avisoC = '';
+  if (!interActual.length) {
+    let min = Infinity;
+    for (const a of lig) for (const b of rec) { const d = dist(a, b); if (d < min) min = d; }
+    if (min > 6) avisoC = `La pose está a ${min.toFixed(1)} Å del átomo más cercano del receptor: no se tocan. `
+      + (meta.receptor && receptorNombre && !mismoReceptor(meta.receptor, receptorNombre)
+        ? `Este .dlg se corrió contra "${meta.receptor}" y cargaste "${receptorNombre}".`
+        : 'Suele significar que el receptor cargado no es el de este docking.');
+  }
+
+  if (!visorC) visorC = $3Dmol.createViewer($('visorComplejo'), { backgroundColor: 'white' });
+  visorC.removeAllModels(); visorC.removeAllShapes(); visorC.removeAllLabels(); visorC.removeAllSurfaces();
+  visorC.addModel(aPDB(receptorTxt), 'pdb');
+  visorC.addModel(aPDB(pose.lineas.join('\n'), true), 'pdb');
+
+  const residuos = [...new Set(interActual.map((x) => parseInt(x.residuo.replace(/^[A-Z]{3}/, ''))))];
+  const cinta = verCinta ? { cartoon: { color: '#a9bcc8', opacity: 0.92 } } : {};
+  visorC.setStyle({ model: 0 }, cinta);
+  visorC.setStyle({ model: 0, resi: residuos },
+    { ...cinta, stick: { radius: 0.11, colorscheme: 'whiteCarbon' } });
+  visorC.setStyle({ model: 1 }, { stick: { radius: 0.19, colorscheme: CARBONO_LIG } });
+
+  // poses acompañantes, según el modo de vista
+  const conj = conjuntos[conjActual];
+  const extras = [];
+  if (conj && conj.clusters.length && modoVista !== 'pose') {
+    if (modoVista === 'cluster') {
+      const cl = conj.clusters.find((x) => x.rank === pose.cluster);
+      if (cl) for (const j of cl.idx) if (j !== i) extras.push({ j, color: null });
+    } else {
+      conj.clusters.forEach((cl, k) => {
+        const j = cl.idx[0];
+        if (j !== undefined && j !== i) extras.push({ j, color: colorCluster(k) });
+      });
+    }
+  }
+  for (const e of extras) visorC.addModel(aPDB(conj.poses[e.j].lineas.join('\n'), true), 'pdb');
+  // palos finos y no líneas: el ancho de línea de WebGL lo ignoran muchas placas
+  extras.forEach((e, k) => visorC.setStyle({ model: 2 + k },
+    { stick: { radius: 0.055, color: e.color || '#8c8578' } }));
+
+  // la caja de docking, con el centro y el tamaño que escribió AutoDock en el encabezado
+  let enPared = 0;
+  if (meta.centro && meta.tam) {
+    if (verCaja) visorC.addBox({
+      center: { x: meta.centro[0], y: meta.centro[1], z: meta.centro[2] },
+      dimensions: { w: meta.tam[0], h: meta.tam[1], d: meta.tam[2] },
+      wireframe: true, color: '#a0523a',
+    });
+    // una pose apoyada contra la pared es el síntoma de una caja demasiado chica
+    const semi = meta.tam.map((t) => t / 2);
+    enPared = lig.filter((a) => a.el !== 'H' &&
+      [a.x - meta.centro[0], a.y - meta.centro[1], a.z - meta.centro[2]]
+        .some((d, k) => semi[k] - Math.abs(d) < 1)).length;
+  }
+
+  if (verSup)
+    visorC.addSurface($3Dmol.SurfaceType.VDW, { opacity: 0.55, color: '#d8d5cc' }, { model: 0, resi: residuos });
+
+  for (const it of interActual) {
+    visorC.addCylinder({ start: { x: it.a.x, y: it.a.y, z: it.a.z }, end: { x: it.b.x, y: it.b.y, z: it.b.z },
+      radius: it.tipo === 'hidrofóbica' ? 0.035 : 0.055, dashed: true, fromCap: 1, toCap: 1,
+      color: COLOR_INT[it.tipo] });
+    if (verDist && it.tipo !== 'hidrofóbica')
+      visorC.addLabel(it.d.toFixed(2) + ' Å',
+        { position: { x: (it.a.x + it.b.x) / 2, y: (it.a.y + it.b.y) / 2, z: (it.a.z + it.b.z) / 2 },
+          fontSize: 10, fontColor: '#17150f', backgroundColor: '#f0ece2', backgroundOpacity: 0.85,
+          borderThickness: 1, borderColor: COLOR_INT[it.tipo], inFront: true });
+  }
+  // el encuadre sigue a las poses: si están todas en el mismo bolsillo se acerca, y si
+  // andan desparramadas —el caso del docking ciego— abre a toda la proteína
+  const cen = (at) => at.reduce((s, a) => [s[0] + a.x / at.length, s[1] + a.y / at.length, s[2] + a.z / at.length], [0, 0, 0]);
+  const c0 = cen(lig);
+  const disperso = extras.some((e) => {
+    const c1 = cen(leerPDBQT(conj.poses[e.j].lineas.join('\n')));
+    return Math.hypot(c1[0] - c0[0], c1[1] - c0[1], c1[2] - c0[2]) > 12;
+  });
+  if (disperso) visorC.zoomTo();
+  else { visorC.zoomTo({ model: 1 }); visorC.zoom(extras.length ? 0.75 : 0.55); }
+  visorC.render();
+
+  $('sinComplejo').hidden = true;
+  $('leyenda').hidden = false;
+  let ley = Object.entries(COLOR_INT).map(([k, c]) => {
+    const n = interActual.filter((x) => x.tipo === k).length;
+    return `<span class="it" style="opacity:${n ? 1 : .35}"><span class="mu" style="border-color:${c}"></span>${k} (${n})</span>`;
+  }).join('');
+  if (modoVista === 'repres' && conj && conj.clusters.length) {
+    // con docking ciego puede haber decenas de clusters: se nombran los diez primeros
+    ley += conj.clusters.slice(0, COLOR_CLUSTER.length).map((cl, k) =>
+      `<span class="it"><span class="mu" style="border-color:${colorCluster(k)}"></span>cl ${cl.rank} (${cl.n})</span>`).join('');
+    const resto = conj.clusters.length - COLOR_CLUSTER.length;
+    if (resto > 0) ley += `<span class="it"><span class="mu" style="border-color:#8c8578"></span>+${resto} cluster${resto > 1 ? 's' : ''} más, en gris</span>`;
+  }
+  else if (modoVista === 'cluster' && extras.length)
+    ley += `<span class="it"><span class="mu" style="border-color:#9a9285"></span>${extras.length} miembro${extras.length > 1 ? 's' : ''} del cluster</span>`;
+  $('leyenda').innerHTML = ley;
+  const etq = conj && conj.tipo === 'dlg'
+    ? `corrida ${pose.run}${pose.cluster ? ` · cluster ${pose.cluster} (sub ${pose.sub})` : ''}` +
+      `${pose.rmsdCluster !== undefined ? ` · rmsd al jefe ${pose.rmsdCluster.toFixed(2)} Å` : ''}`
+    : `pose ${i + 1}`;
+  $('pieComplejo').textContent = `${conj && conjuntos.length > 1 ? conj.nombre + ' · ' : ''}${etq} · ` +
+    `${lig.filter((a) => a.el !== 'H').length} átomos pesados · ${interActual.length} interacciones · ` +
+    `${((performance.now() - t0) / 1000).toFixed(1)} s` +
+    (enPared ? ` · ${enPared} átomo${enPared > 1 ? 's' : ''} a menos de 1 Å de la pared de la caja` : '');
+  pintarTablaInter();
+  pintarTablaClusters();
+  poseRenderizada = i;
+  claveRender = `${conjActual}|${i}|${modoVista}`;
+}
+
+function pintarTablaInter() {
+  if (!interActual.length) {
+    $('tablaInter').innerHTML = '<p class="vacio">No se detectó ninguna interacción con estos criterios.</p>';
+    return;
+  }
+  $('tablaInter').innerHTML = '<div class="desborde"><table><thead><tr>' +
+    '<th>Tipo</th><th>Residuo</th><th>Átomo rec.</th><th>Átomo lig.</th><th>d (Å)</th><th>Áng. (°)</th><th>Nota</th>' +
+    '</tr></thead><tbody>' + interActual.map((x) =>
+      `<tr><td><span class="tipo"><i style="background:${COLOR_INT[x.tipo]}"></i>${x.tipo}</span></td>` +
+      `<td>${x.residuo}</td><td>${x.atRes}</td><td>${x.atLig}</td>` +
+      `<td>${x.d.toFixed(2)}</td><td>${x.ang === null ? '—' : x.ang.toFixed(0)}</td><td>${x.rol || '—'}</td></tr>`
+    ).join('') + '</tbody></table></div>';
+}
+
+function csvInter() {
+  const cab = 'tipo,residuo,atomo_receptor,atomo_ligando,distancia_A,angulo_grados,nota';
+  return [cab, ...interActual.map((x) =>
+    [x.tipo, x.residuo, x.atRes, x.atLig, x.d.toFixed(3), x.ang === null ? '' : x.ang.toFixed(1), x.rol].join(','))].join('\n');
+}
+
+function pintarSelPoses() {
+  const c = conjuntos[conjActual]; if (!c) return;
+  posesC = c.poses;
+  $('poseSel').innerHTML = c.poses.map((p, i) => {
+    const dg = p.dg !== null && p.dg !== undefined ? ` — ${p.dg.toFixed(2)} kcal/mol` : '';
+    const cl = p.cluster ? ` · cluster ${p.cluster}` : '';
+    return `<option value="${i}">${c.tipo === 'dlg' ? `Corrida ${p.run}` : `Pose ${i + 1}`}${dg}${cl}</option>`;
+  }).join('');
+}
+
+function pintarTablaClusters() {
+  const c = conjuntos[conjActual];
+  const caja = $('tablaClusters');
+  if (!c || !c.clusters.length) {
+    caja.innerHTML = '<p class="vacio">Este archivo no trae clusters: el PDBQT de Vina sólo lista poses ordenadas por ΔG. Los clusters los escribe AutoDock en el <code>.dlg</code>.</p>';
+    return;
+  }
+  const total = c.poses.length;
+  const sel = c.poses[+$('poseSel').value];
+  const max = Math.max(...c.clusters.map((x) => x.n));
+  caja.innerHTML = '<div class="desborde"><table><thead><tr>' +
+    '<th>Cluster</th><th>ΔG mejor</th><th>ΔG medio</th><th>N</th><th>% de corridas</th><th>Población</th>' +
+    '</tr></thead><tbody>' + c.clusters.map((x, k) => {
+      const pct = (100 * x.n / total);
+      const color = colorCluster(k);
+      const act = sel && sel.cluster === x.rank;
+      return `<tr class="filaCluster${act ? ' activa' : ''}" data-rank="${x.rank}" style="cursor:pointer${act ? ';font-weight:700' : ''}">` +
+        `<td><span class="tipo"><i style="background:${color}"></i>${x.rank}</span></td>` +
+        `<td>${x.mejor.toFixed(2)}</td><td>${x.media.toFixed(2)}</td><td>${x.n}</td>` +
+        `<td>${pct.toFixed(0)} %</td>` +
+        `<td><span style="display:inline-block;height:9px;width:${Math.max(2, 100 * x.n / max)}px;background:${color};vertical-align:middle"></span></td></tr>`;
+    }).join('') + '</tbody></table></div>' +
+    `<p class="nota" style="margin:8px 0 0">${c.clusters.length} cluster${c.clusters.length > 1 ? 's' : ''} sobre ${total} corridas. ` +
+    `El cluster 1 se queda con el ${(100 * c.clusters[0].n / total).toFixed(0)} % de ellas: cuanto más alto, más convergió la búsqueda. ` +
+    'Un ΔG bueno con población baja es una pose que apareció una vez.</p>' +
+    (c.meta && c.meta.rmstol
+      ? `<p class="nota" style="margin:4px 0 0">Agrupados por AutoDock con tolerancia de <b>${c.meta.rmstol.toFixed(1)} Å</b>` +
+        `${c.meta.receptor ? `, contra <b>${c.meta.receptor}</b>` : ''}. ` +
+        'Reagrupar con otra tolerancia da otro número de clusters: si comparás con una tabla hecha aparte, ' +
+        'fijate que sea la misma.</p>'
+      : '');
+  for (const tr of caja.querySelectorAll('.filaCluster')) tr.addEventListener('click', () => {
+    const x = c.clusters.find((y) => y.rank === +tr.dataset.rank);
+    if (!x || !x.idx.length) return;
+    $('poseSel').value = x.idx[0];
+    mostrarComplejo();
+  });
+}
+
+function pintarSelLigandos() {
+  const varios = conjuntos.length > 1;
+  $('ligSel').hidden = !varios; $('rotLig').hidden = !varios;
+  if (!varios) return;
+  $('ligSel').innerHTML = conjuntos.map((c, i) => {
+    const mejor = c.poses.reduce((m, p) => (p.dg !== null && p.dg !== undefined && p.dg < m ? p.dg : m), Infinity);
+    return `<option value="${i}"${i === conjActual ? ' selected' : ''}>${c.nombre}` +
+      `${isFinite(mejor) ? ` — ${mejor.toFixed(2)}` : ''}${c.clusters.length ? ` · ${c.clusters.length} cl` : ''}</option>`;
+  }).join('');
+}
+
+// mantiene la firma vieja: la usa la pestaña Docking con el PDBQT de Vina
+function cargarPoses(txt, origen) {
+  const c = leerConjunto(txt, origen);
+  if (!c.poses.length) { cEstado('Ese archivo no tiene poses legibles.', true); return; }
+  conjuntos = [c]; conjActual = 0;
+  pintarSelLigandos(); pintarSelPoses(); pintarTablaClusters();
+  claveRender = ''; poseRenderizada = -1;
+  cEstado(`${c.poses.length} pose${c.poses.length > 1 ? 's' : ''} ${origen}` +
+    `${c.clusters.length ? ` en ${c.clusters.length} cluster${c.clusters.length > 1 ? 's' : ''}` : ''}.`);
+}
+
+async function cargarArchivos(files) {
+  const nuevos = [];
+  for (const f of files) {
+    const c = leerConjunto(await f.text(), f.name.replace(/\.(pdbqt|dlg)$/i, ''));
+    if (c.poses.length) nuevos.push(c);
+  }
+  if (!nuevos.length) { cEstado('Ninguno de esos archivos tiene poses legibles.', true); return; }
+  conjuntos = nuevos; conjActual = 0;
+  pintarSelLigandos(); pintarSelPoses(); pintarTablaClusters();
+  claveRender = ''; poseRenderizada = -1;
+  const saltados = files.length - nuevos.length;
+  cEstado(`${nuevos.length} archivo${nuevos.length > 1 ? 's' : ''} cargado${nuevos.length > 1 ? 's' : ''}` +
+    `${saltados ? ` (${saltados} sin poses legibles)` : ''}.`);
+  mostrarComplejo();
+}
+
+async function mostrarComplejo() {
+  if (!posesC.length && ultimaPose) cargarPoses(ultimaPose, 'del último docking');
+  if (!posesC.length) { cEstado('Todavía no hay poses.'); return; }
+  if (!receptorTxt) {
+    try { receptorTxt = await (await fetch($('receptor').value || 'datos/receptor-proteasa-hiv-4LL3.pdbqt')).text(); }
+    catch { cEstado('No se pudo cargar el receptor.', true); return; }
+  }
+  if (claveRender !== `${conjActual}|${+$('poseSel').value}|${modoVista}`) repintar();
+}
+
+function repintar() {
+  cEstado('Midiendo la pose…');
+  setTimeout(() => { pintarComplejo(); cEstado(avisoC || 'Listo.', !!avisoC); }, 10);
+}
+
+$('poseSel').addEventListener('change', repintar);
+$('posePrev').addEventListener('click', () => {
+  const s = $('poseSel'); if (+s.value > 0) { s.value = +s.value - 1; repintar(); }
+});
+$('poseSig').addEventListener('click', () => {
+  const s = $('poseSel'); if (+s.value < posesC.length - 1) { s.value = +s.value + 1; repintar(); }
+});
+$('ligSel').addEventListener('change', (e) => {
+  conjActual = +e.target.value;
+  pintarSelPoses(); pintarTablaClusters(); repintar();
+});
+for (const [id, modo] of [['mPose', 'pose'], ['mCluster', 'cluster'], ['mRepres', 'repres']])
+  $(id).addEventListener('click', () => {
+    modoVista = modo;
+    for (const x of ['mPose', 'mCluster', 'mRepres']) $(x).classList.toggle('activa', x === id);
+    if (posesC.length) repintar();
+  });
+$('vSuperficie').addEventListener('click', () => {
+  verSup = !verSup; $('vSuperficie').classList.toggle('activa', verSup);
+  if (posesC.length) pintarComplejo();
+});
+$('vDistancias').addEventListener('click', () => {
+  verDist = !verDist; $('vDistancias').classList.toggle('activa', verDist);
+  if (posesC.length) pintarComplejo();
+});
+$('vCaja').addEventListener('click', () => {
+  verCaja = !verCaja; $('vCaja').classList.toggle('activa', verCaja);
+  if (posesC.length) { claveRender = ''; repintar(); }
+});
+$('vCinta').addEventListener('click', () => {
+  verCinta = !verCinta; $('vCinta').classList.toggle('activa', verCinta);
+  if (posesC.length) pintarComplejo();
+});
+$('encuadrarC').addEventListener('click', () => { if (visorC) { visorC.zoomTo({ model: 1 }); visorC.zoom(0.55); visorC.render(); } });
+$('poseArchivo').addEventListener('change', async (e) => {
+  const fs = [...e.target.files]; if (!fs.length) return;
+  cEstado(`Leyendo ${fs.length} archivo${fs.length > 1 ? 's' : ''}…`);
+  setTimeout(() => cargarArchivos(fs), 10);
+});
+$('receptorArchivoC').addEventListener('change', async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  receptorTxt = await f.text(); receptorNombre = f.name;
+  const n = leerPDBQT(receptorTxt).length;
+  $('receptorEstadoC').textContent = `Receptor "${f.name}": ${n} átomos. Las interacciones se miden contra este archivo.`;
+  if ($('receptorEstado')) $('receptorEstado').textContent = `Receptor "${f.name}": ${receptorTxt.split('\n').length} líneas.`;
+  claveRender = '';
+  if (posesC.length) repintar();
+});
+$('bajarClusters').addEventListener('click', () => {
+  const c = conjuntos[conjActual];
+  if (!c || !c.clusters.length) { cEstado('Este archivo no trae clusters.', true); return; }
+  const total = c.poses.length;
+  const csv = ['ligando,cluster,dG_mejor,dG_medio,n,pct_corridas,corridas',
+    ...c.clusters.map((x) => [c.nombre, x.rank, x.mejor.toFixed(3), x.media.toFixed(3), x.n,
+      (100 * x.n / total).toFixed(1), '"' + x.runs.join(' ') + '"'].join(','))].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = `clusters_${c.nombre}.csv`; a.click(); URL.revokeObjectURL(a.href);
+});
+$('bajarClusterPdb').addEventListener('click', () => {
+  const c = conjuntos[conjActual]; if (!c) return;
+  const pose = c.poses[+$('poseSel').value];
+  const cl = c.clusters.find((x) => x.rank === pose?.cluster);
+  const idx = cl ? cl.idx : [+$('poseSel').value];
+  const txt = idx.map((j, k) => `MODEL ${k + 1}\n` + c.poses[j].lineas.join('\n') + '\nENDMDL').join('\n') + '\n';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([txt], { type: 'text/plain' }));
+  a.download = `${c.nombre}${cl ? `_cluster${cl.rank}` : ''}.pdbqt`; a.click(); URL.revokeObjectURL(a.href);
+});
+$('copiarInter').addEventListener('click', async () => {
+  if (!interActual.length) { cEstado('No hay interacciones que copiar.', true); return; }
+  await navigator.clipboard.writeText(csvInter()); cEstado('CSV copiado.');
+});
+$('bajarInter').addEventListener('click', () => {
+  if (!interActual.length) { cEstado('No hay interacciones que descargar.', true); return; }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csvInter()], { type: 'text/csv' }));
+  a.download = 'interacciones.csv'; a.click(); URL.revokeObjectURL(a.href);
+});
+window.__complejo = () => ({   // para inspección y pruebas
+  poses: posesC.length, inter: interActual, modo: modoVista,
+  conjuntos: conjuntos.map((c) => ({ nombre: c.nombre, tipo: c.tipo, poses: c.poses.length, clusters: c.clusters.length })),
+  cual: conjActual, clusters: (conjuntos[conjActual] || {}).clusters || [],
+  poseSel: +$('poseSel').value, clusterDeLaPose: (posesC[+$('poseSel').value] || {}).cluster,
+  modelos: visorC ? (visorC.getNumModels ? visorC.getNumModels() : (visorC.models || []).length) : 0,
+});
+
+
+// ───────────────── portada: se va en cuanto el usuario arranca ─────────────────
+function cerrarPortada() { const e = $('portada'); if (e) e.hidden = true; }
+function irAPestana(nombre) {
+  const b = [...$('pestanas').children].find((x) => x.dataset.p === nombre);
+  if (b) b.click();
+}
+$('portadaEmpezar').addEventListener('click', cerrarPortada);
+$('portadaAyuda').addEventListener('click', () => { cerrarPortada(); irAPestana('ayuda'); });
+$('portadaEjemplo').addEventListener('click', () => {
+  cerrarPortada();
+  $('smiles').value = EJEMPLOS[0][1];
+  $('alDibujo').click();
+  if (!$('calcular').disabled) $('calcular').click();
+});
+$('verPortada').addEventListener('click', () => {
+  $('portada').hidden = false;
+  irAPestana('descriptores');
+  const v2d = document.querySelector('.vistas button[data-v="2d"]');
+  if (v2d) v2d.click();
+  $('portada').scrollIntoView({ block: 'nearest' });
+});
+// cualquier acción sobre la molécula da por entendida la portada
+for (const id of ['calcular', 'alDibujo', 'delDibujo']) $(id).addEventListener('click', cerrarPortada);
+$('ejemplos').addEventListener('click', cerrarPortada);
+
+$('irAyuda').addEventListener('click', (e) => {
+  e.preventDefault();
+  const b = [...$('pestanas').children].find((x) => x.dataset.p === 'ayuda');
+  if (b) { b.click(); b.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
+});
+$('copiarEnlace').addEventListener('click', async (e) => {
+  try {
+    await navigator.clipboard.writeText($('enlace').textContent.trim());
+    e.target.textContent = 'Copiado';
+    setTimeout(() => { e.target.textContent = 'Copiar enlace'; }, 1800);
+  } catch { e.target.textContent = 'Copialo a mano'; }
+});
+
+pintarSerie();
+
+</script>
+</body>
+</html>

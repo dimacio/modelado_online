@@ -1,5 +1,5 @@
 // C7 — Regresion de C5: el mapa de interacciones no cambia al agregar el lector de .dlg.
-// Uso: node c7-regresion-c5.mjs <ruta/app/index.html> <docs/validacion/datos>
+// Uso: node c7-regresion-c5.mjs <ruta/beta/index.html> <docs/validacion/datos>
 // Corre analizar() sobre la pose 1 de los once ligandos de C4 contra 2B6A y compara
 // fila por fila contra los CSV ya validados. La unica normalizacion es la etiqueta
 // pi-pi, que el arnes de Python escribio en ASCII.
