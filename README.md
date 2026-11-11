@@ -26,7 +26,34 @@ Aplicación en uso, verificada de punta a punta dentro de un navegador real. Tie
   hidrofóbica, π–π, halógeno y puente salino) medido sobre la geometría, con tabla exportable a CSV.
   Los criterios geométricos están escritos en la propia pestaña.
 
-Las mediciones están en `docs/verificacion-navegador.md`.
+Las mediciones están en `docs/verificacion-navegador.md`; la validación completa contra el
+TP, paso a paso y con sus datos crudos, está en [`docs/validacion/`](docs/validacion/00-protocolo.md).
+
+## Validación
+
+La herramienta se validó contra el TP de la cátedra con un protocolo **escrito antes de
+correr nada** —los criterios quedaron pre-registrados en
+[`docs/validacion/00-protocolo.md`](docs/validacion/00-protocolo.md)— y cada paso dejó sus
+datos crudos y su código en `docs/validacion/datos/` y `docs/validacion/arnes/`:
+
+| Paso | Qué se validó | Criterio | Resultado | Doc |
+|---|---|---|---|---|
+| C1 | Redocking de control: T50, el ligando cristalográfico de 2B6A | RMSD de átomos pesados ≤ 2,0 Å | **0,256 Å → ACEPTA** | `01-redocking-control.md` |
+| C2 | Descriptores de la app vs RDKit de línea de comandos | coincidir salvo redondeo, y SCF de GFN2 convergido en los once compuestos | idénticos (máx. Δ = 0,044); SCF 11/11 → **ACEPTA** | `03-descriptores-qsar.md` |
+| C3 | QSAR del TP 1 (Partes A y B) | ajustar modelos de 1–3 variables con R², Fisher y Student (α = 0,05) y aplicar ortogonalidad | todos los modelos ajustables → **ACEPTA** | `03-descriptores-qsar.md` |
+| C4 | Serie de docking: los once ligandos contra 2B6A, con Webina (Vina 1.2.3 en WebAssembly) | once corridas sin fallas y pose de cada uno dentro del bolsillo NNRTI (centroide a ≤ 10 Å del de T50) | 0,19–1,65 Å → **ACEPTA** | `04-docking-serie.md` |
+| C5 | Interacciones de la pestaña Complejo | tabla ligando × residuo; los residuos detectados incluyen los del sitio NNRTI de la bibliografía | 86–100 % de contactos en el sitio; Tyr181/Tyr188 en todos → **ACEPTA** | `05-interacciones.md` |
+| C6 | pIC50 = f(ΔGdock) | sin criterio de aprobación (el TP pregunta *si* la relación es significativa) | no robusta entre corridas (R² de 0,02 a 0,44) → **reportado** | `06-regresion-dG.md` |
+
+**Cómo se corrió.** El docking usó el mismo motor que la app (Webina 1.0.5, AutoDock Vina
+1.2.3 compilado a WebAssembly) ejecutado desde Node.js con un arnés que replica la
+invocación exacta de la pestaña Docking, y la app real se corrió en un navegador headless
+para los descriptores. De contraste —nunca para producir lo que se valida—: RDKit de línea
+de comandos (C2) y el binario nativo de Vina 1.2.3 en Colab
+(`02-contraste-vina-nativo.md`). Todo lo que se afirma "verificado" tiene su archivo: los
+datos crudos en `docs/validacion/datos/`, los scripts en `docs/validacion/arnes/` y las
+bitácoras de desarrollo (`bitacora-desarrollo-c4.md` y `bitacora-desarrollo-c2-c3-c5.md`),
+que narran además los problemas encontrados y su lectura didáctica.
 
 ## Cómo publicarlo
 
@@ -58,6 +85,8 @@ docs/
                                   consignas y requisitos funcionales
   fundamentos-y-analisis.md       estado del arte, factibilidad y validación
   verificacion-navegador.md       mediciones dentro de Chromium
+  validacion/                     protocolo pre-registrado (00), pasos 01–06, bitácoras
+                                  de desarrollo, datos crudos y arnés de cada corrida
 spike/                            prueba de concepto ejecutable
 data/
   tzd-rawal-2005.csv              serie de 15 tiazolidinonas con actividad y descriptores

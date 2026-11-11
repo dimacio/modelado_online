@@ -115,3 +115,7 @@ donde los service workers estén bloqueados (ventana privada de Firefox, políti
 corporativas), abrila localmente con `servir.bat` o `python servidor.py 8000`. Completá
 las tres pestañas y guardá el CSV de descriptores, los PDBQT de poses y el CSV de
 interacciones. Para retomar en otra máquina o sesión se vuelven a cargar esos archivos.
+
+La validación completa de la herramienta contra el TP (protocolo pre-registrado, pasos
+C1–C6, datos crudos y bitácoras) está en
+[`docs/validacion/`](../docs/validacion/00-protocolo.md).
