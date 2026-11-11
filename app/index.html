@@ -302,7 +302,9 @@ a:focus-visible{outline:2px solid var(--celeste);outline-offset:2px}
         <div class="acciones">
           <button id="copiar">Copiar como CSV</button>
           <button id="descargar">Descargar CSV</button>
+          <button id="cargarCSV">Cargar CSV</button>
           <button id="limpiar">Vaciar</button>
+          <input type="file" id="serieArchivo" accept=".csv,.txt" hidden>
         </div>
       </div>
     </div>
@@ -314,6 +316,7 @@ a:focus-visible{outline:2px solid var(--celeste);outline-offset:2px}
         <label>Receptor</label>
         <select id="receptor">
           <option value="datos/receptor-proteasa-hiv-4LL3.pdbqt">Proteasa de HIV (4LL3) — ejemplo</option>
+          <option value="datos/2B6A_receptor.pdbqt">Transcriptasa reversa de HIV-1 (2B6A) — TP</option>
           <option value="">Subir un .pdbqt propio…</option>
         </select>
         <input type="file" id="receptorArchivo" accept=".pdbqt" hidden>
@@ -343,7 +346,10 @@ a:focus-visible{outline:2px solid var(--celeste);outline-offset:2px}
         <div class="tarjeta">
           <h2>Salida de Vina</h2>
           <pre id="vinaSalida" class="consola">—</pre>
-          <div class="acciones"><button id="bajarPose">Descargar PDBQT de poses</button></div>
+          <div class="acciones">
+            <button id="bajarPose">Descargar PDBQT de poses</button>
+            <button id="bajarSalida">Descargar salida completa</button>
+          </div>
         </div>
       </div>
     </div>
@@ -432,7 +438,8 @@ a:focus-visible{outline:2px solid var(--celeste);outline-offset:2px}
             <ol>
               <li>El ligando sale del SMILES de la primera pestaña: se le agregan hidrógenos a pH 7,4 y se
                   convierte a PDBQT con su árbol de torsiones.</li>
-              <li>Elegí el receptor (viene uno de ejemplo) o subí un <code>.pdbqt</code> propio.</li>
+              <li>Elegí el receptor (4LL3 de ejemplo, 2B6A del TP con su caja precargada) o subí un
+                  <code>.pdbqt</code> propio.</li>
               <li>La <em>caja</em> define dónde busca Vina: centro y tamaño en ångström. Si no sabés el centro,
                   usá el centroide del ligando cristalográfico.</li>
               <li><em>Exhaustiveness</em> es cuánto insiste la búsqueda: 8 es el valor por defecto de Vina,
@@ -445,6 +452,19 @@ a:focus-visible{outline:2px solid var(--celeste);outline-offset:2px}
               <li><em>Cinta</em> muestra u oculta la proteína, <em>Superficie</em> dibuja la del bolsillo,
                   <em>Distancias</em> prende las etiquetas y <em>Encuadrar</em> vuelve a centrar en el ligando.</li>
               <li>La tabla de interacciones se baja como CSV.</li>
+            </ol>
+            <h4>Terminar el TP de forma remota</h4>
+            <ol>
+              <li>Elegí la estructura en <em>Estructura de la serie del TP</em> (los diez NNRTI, más T50 de
+                  control y EFZ-Br de diseño) y apretá <em>Calcular</em>. La tabla <em>Serie</em> se descarga
+                  como CSV y se puede volver a <em>Cargar CSV</em> otro día: los archivos son el estado, nada
+                  se guarda en la nube.</li>
+              <li>En <em>Docking</em>, elegí el receptor <em>2B6A</em>: la caja del TP queda cargada sola.
+                  Al terminar, descargá el <em>PDBQT de poses</em> y la <em>salida completa</em> (parámetros y
+                  log de Vina) para el informe.</li>
+              <li>En <em>Complejo</em>, cargá las poses descargadas (o usá las del último docking) y bajá el
+                  <em>CSV de interacciones</em>. Para seguir en otra máquina alcanza con el CSV de descriptores
+                  y los PDBQT de poses.</li>
             </ol>
           </div>
         </div>
@@ -547,11 +567,18 @@ const BASE_OCC = 'https://cdn.jsdelivr.net/npm/@peterspackman/occjs@0.9.7/dist/'
 const AU2D = 2.541746473, HA2EV = 27.211386;
 
 const EJEMPLOS = [
-  ['TZD 1',       'O=C1CSC(c2c(Cl)cccc2Cl)N1Cc1ccco1'],
-  ['TZD 11',      'O=C1CSC(c2c(OC)cc(OC)cc2OC)N1Cc1ccco1'],
-  ['Efavirenz',   'O=C1N[C@](C#CC2CC2)(C(F)(F)F)c2cc(Cl)ccc2O1'],
-  ['Nevirapina',  'Cc1ccnc2c1NC(=O)c1cccnc1N2C1CC1'],
-  ['Aspirina',    'CC(=O)Oc1ccccc1C(=O)O'],
+  ['GFA (3DLE)',            'O=C(COc1ccc(Cl)cc1C(=O)c1ccccc1)Nc1ccccc1'],
+  ['EFZ — efavirenz',       'O=C1Nc2ccc(Cl)cc2[C@@](C#CC2CC2)(C(F)(F)F)O1'],
+  ['TBO — 8-Cl-TIBO',       'CC(C)=CCN1Cc2c(Cl)ccc3[nH]c(=S)n(c23)C[C@@H]1C'],
+  ['TNK — emivirina',       'CC(C)c1c(Cc2ccccc2)n(COCc2ccccc2)c(=O)[nH]c1=O'],
+  ['NVP — nevirapina',      'Cc1ccnc2c1NC(=O)c1cccnc1N2C1CC1'],
+  ['HBQ (2OPP)',            'CC[C@H]1C(=O)Nc2ccc(F)cc2N1C(=O)OC(C)C'],
+  ['QNO47b',                'COC(=O)N[C@@H]1C(=O)Nc2ccc(Cl)cc2[C@]1(C#CC1CC1)C(F)(F)F'],
+  ['U05 (1RTH)',            'CCN1c2cc([N+](=O)[O-])ccc2N(C)C(=O)c2cccnc21'],
+  ['ZZE — lersivirina',     'CCc1nn(CCO)c(CC)c1Oc1cc(C#N)cc(C#N)c1'],
+  ['QNO47c',                'CC(=O)N[C@@H]1C(=O)Nc2ccc(Cl)cc2[C@]1(C#CC1CC1)C(F)(F)F'],
+  ['T50 — control (cristal 2B6A)', 'Cc1cccc2c1nc(-c1c(F)cccc1F)n2Cc1c(F)cccc1F'],
+  ['EFZ-Br — compuesto de diseño', 'O=C1Nc2ccc(Br)cc2[C@@](C#CC2CC2)(C(F)(F)F)O1'],
 ];
 
 const $ = (id) => document.getElementById(id);
@@ -568,11 +595,17 @@ function leerError(e) {
 }
 window.__geo = () => geo;   // para inspección y pruebas
 
-$('ejemplos').innerHTML = EJEMPLOS.map(([n, s], i) =>
-  `<button data-i="${i}">${n}</button>`).join('');
-$('ejemplos').addEventListener('click', (e) => {
-  const b = e.target.closest('button'); if (!b) return;
-  $('smiles').value = EJEMPLOS[+b.dataset.i][1];
+$('ejemplos').innerHTML =
+  '<label for="serieTP" style="font:700 .62rem var(--pix);text-transform:uppercase;color:var(--tenue)">Estructura de la serie del TP</label>' +
+  '<select id="serieTP"><option value="">— elegí una —</option>' +
+  EJEMPLOS.map(([n], i) => `<option value="${i}">${n}</option>`).join('') +
+  '</select>';
+document.getElementById('serieTP').addEventListener('change', (e) => {
+  const i = +e.target.value;
+  if (isNaN(i) || i < 0 || !EJEMPLOS[i]) return;
+  $('smiles').value = EJEMPLOS[i][1];
+  cerrarPortada();
+  estado(`Estructura "${EJEMPLOS[i][0]}" cargada en el campo SMILES. Apretá Calcular.`);
 });
 
 (async function arrancar() {
@@ -792,6 +825,45 @@ $('descargar').addEventListener('click', () => {
   a.download = 'descriptores.csv'; a.click(); URL.revokeObjectURL(a.href);
 });
 $('limpiar').addEventListener('click', () => { serie = []; pintarSerie(); estado('Serie vaciada.'); });
+
+// cargar una serie exportada antes (CSV de la tabla): restaura el trabajo de otra sesión
+function parsearCSVLinea(l) {
+  const out = []; let cur = '', q = false;
+  for (let i = 0; i < l.length; i++) {
+    const c = l[i];
+    if (q) {
+      if (c === '"') { if (l[i + 1] === '"') { cur += '"'; i++; } else q = false; }
+      else cur += c;
+    } else if (c === '"') q = true;
+    else if (c === ',') { out.push(cur); cur = ''; }
+    else cur += c;
+  }
+  out.push(cur);
+  return out;
+}
+$('cargarCSV').addEventListener('click', () => $('serieArchivo').click());
+$('serieArchivo').addEventListener('change', async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const txt = await f.text();
+    const lineas = txt.trim().split(/\r?\n/).filter((l) => l.trim());
+    if (!lineas.length) throw new Error('el archivo está vacío');
+    const esperadas = ['smiles', 'mw', 'clogP', 'mr', 'tpsa', 'asa', 'dipolo', 'homo', 'lumo', 'gap'];
+    const cab = parsearCSVLinea(lineas[0]).map((s) => s.trim());
+    const idx = esperadas.map((k) => cab.indexOf(k));
+    if (idx.some((i) => i < 0)) throw new Error('el encabezado no es el CSV de la Serie de QuEtool');
+    const filas = lineas.slice(1).map((l) => parsearCSVLinea(l));
+    const nueva = filas.map((fs) => {
+      const r = { smiles: fs[idx[0]].trim() };
+      for (let k = 1; k < esperadas.length; k++) r[esperadas[k]] = +fs[idx[k]];
+      return r;
+    });
+    if (nueva.some((r) => !r.smiles || esperadas.slice(1).some((k) => !isFinite(r[k]))))
+      throw new Error('hay filas con valores inválidos');
+    serie = nueva; pintarSerie();
+    estado(`Serie cargada: ${nueva.length} compuestos desde "${f.name}".`);
+  } catch (err) { estado('No se pudo cargar el CSV: ' + (err && err.message ? err.message : err), true); }
+});
 
 
 // ───────────────────────── visor de geometría 3D ─────────────────────────
@@ -1014,6 +1086,19 @@ function cargarScript(src) {
   });
 }
 
+// caja sugerida por receptor: al elegir 2B6A quedan los parámetros del TP
+const CAJA_POR_RECEPTOR = {
+  'datos/receptor-proteasa-hiv-4LL3.pdbqt': { cx: -9.815, cy: 15.200, cz: 26.964, sx: 20, sy: 20, sz: 20, ex: 8 },
+  'datos/2B6A_receptor.pdbqt': { cx: 145.876, cy: -24.851, cz: 74.796, sx: 31, sy: 31, sz: 31, ex: 10 },
+};
+function aplicarCaja(v) {
+  const c = CAJA_POR_RECEPTOR[v];
+  if (!c) return;
+  $('cx').value = c.cx; $('cy').value = c.cy; $('cz').value = c.cz;
+  $('sx').value = c.sx; $('sy').value = c.sy; $('sz').value = c.sz;
+  $('ex').value = c.ex;
+}
+
 async function prepararDocking() {
   if (!self.crossOriginIsolated) {
     $('panel-docking').querySelector('.columnas').insertAdjacentHTML('beforebegin',
@@ -1034,6 +1119,7 @@ async function prepararDocking() {
   OB = mod;
   dockEstado('Cargando Vina…');
   WEBINA = (await import('./lib/Webina/vina.1.0.5.js')).default;
+  aplicarCaja($('receptor').value);
   receptorTxt = await (await fetch($('receptor').value)).text();
   $('receptorEstado').textContent = `Receptor cargado: ${receptorTxt.split('\n').length} líneas.`;
   $('dockear').disabled = false;
@@ -1044,6 +1130,7 @@ async function prepararDocking() {
 $('receptor').addEventListener('change', async () => {
   const v = $('receptor').value;
   if (!v) { $('receptorArchivo').click(); return; }
+  aplicarCaja(v);
   receptorTxt = await (await fetch(v)).text();
   $('receptorEstado').textContent = `Receptor cargado: ${receptorTxt.split('\n').length} líneas.`;
 });
@@ -1137,6 +1224,27 @@ $('bajarPose').addEventListener('click', () => {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([ultimaPose], { type: 'text/plain' }));
   a.download = 'poses.pdbqt'; a.click(); URL.revokeObjectURL(a.href);
+});
+
+$('bajarSalida').addEventListener('click', () => {
+  const params = {
+    center_x: $('cx').value, center_y: $('cy').value, center_z: $('cz').value,
+    size_x: $('sx').value, size_y: $('sy').value, size_z: $('sz').value,
+    exhaustiveness: $('ex').value, energy_range: 3, cpu: $('cpu').value,
+  };
+  const txt = [
+    '# QuEtool — corrida de docking',
+    `# Receptor: ${$('receptor').value || 'subido'}`,
+    `# Ligando (SMILES): ${$('smiles').value.trim() || '—'}`,
+    '# Parámetros:',
+    ...Object.entries(params).map(([k, v]) => `#   ${k} = ${v}`),
+    '',
+    $('vinaSalida').textContent.trim() || '—',
+    '',
+  ].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([txt], { type: 'text/plain' }));
+  a.download = 'vina_salida.txt'; a.click(); URL.revokeObjectURL(a.href);
 });
 
 // ────────────── complejo: la pose en el sitio y el mapa de interacciones ──────────────

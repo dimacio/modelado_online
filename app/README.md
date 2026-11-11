@@ -90,3 +90,26 @@ pasar de media hora. Si va lento, bajalo a 1.
 
 Esta pestaña **solo funciona con `servidor.py`**, no en GitHub Pages: Vina usa
 `SharedArrayBuffer`, que exige las cabeceras COOP y COEP.
+
+## Terminar el TP de forma remota
+
+Primera implementación pensada para alumnos que no pudieron terminar el TP con la versión
+anterior y lo retoman a distancia:
+
+- **Selector de la serie.** En Descriptores, "Estructura de la serie del TP" carga en el
+  campo SMILES cualquiera de las doce estructuras: los diez NNRTI (GFA, EFZ, TBO, TNK,
+  NVP, HBQ, QNO47b, U05, ZZE, QNO47c), T50 (control cristalográfico) y EFZ-Br (compuesto
+  de diseño).
+- **Cargar y descargar por etapa.** Descriptores: la tabla Serie se descarga como CSV y se
+  recarga con "Cargar CSV". Docking: "Descargar PDBQT de poses" y "Descargar salida
+  completa" (parámetros + log de Vina, listo para el informe). Complejo: se cargan poses
+  de archivo y la tabla de interacciones se baja como CSV. Los archivos son el estado:
+  nada se guarda en la nube.
+- **Receptor 2B6A con la caja del TP.** En Docking, elegir "Transcriptasa reversa de
+  HIV-1 (2B6A) — TP" carga el receptor y deja la caja con los parámetros del `conf.txt`
+  de la cátedra (centro en el sitio NNRTI, 31 Å de lado, exhaustiveness 10).
+
+**Cómo se usa.** Abrir la app con `servir.bat` (o `python servidor.py 8000`) —el docking
+necesita las cabeceras COOP y COEP, y en GitHub Pages queda deshabilitado—, completar las
+tres pestañas y guardar el CSV de descriptores, los PDBQT de poses y el CSV de
+interacciones. Para retomar en otra máquina o sesión se vuelven a cargar esos archivos.

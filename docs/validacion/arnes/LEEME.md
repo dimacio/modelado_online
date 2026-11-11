@@ -34,6 +34,14 @@ Los scripts apuntan a rutas absolutas del equipo donde corrieron (Drive y
 `C:\Users\dimas\c2-work`); para reproducirlos, ajustar `PROJ`/`REC_PATH`/`AQUI` según
 `MATERIALES_DIR` o una copia local.
 
+## Prueba funcional de la app (TP remoto)
+
+- `test-app.mjs` — corre la app real (servida con `servidor.py`, que da COOP/COEP) sobre
+  Edge headless vía CDP y verifica de punta a punta: selector de la serie, CSV de
+  descriptores (export e import), receptor 2B6A con la caja del TP, docking completo con
+  descargas de poses y salida, complejo con tabla de interacciones y su CSV, y carga de
+  poses desde archivo. Última corrida: 16/16 chequeos OK (NVP contra 2B6A, 24 s).
+
 ## Parches locales al motor (sólo en la copia de trabajo)
 
 Para correr fuera del navegador, la copia de trabajo parchea `vina.1.0.5.js` en dos
