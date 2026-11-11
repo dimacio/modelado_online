@@ -2,11 +2,98 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<title>QuEtool</title>
-<meta http-equiv="refresh" content="0; url=app/">
-<link rel="canonical" href="app/">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QuEtool — QSAR y docking molecular en el navegador</title>
+<meta name="description" content="QuEtool reemplaza la cadena HyperChem + MGLTools de los trabajos prácticos de QSAR y docking: geometría, descriptores, docking de AutoDock Vina e interacciones, todo en el navegador, sin instalar nada.">
+<style>
+  :root{
+    --tinta:#15130f; --papel:#f5f1e6; --panel:#fbf8ef; --suave:#e4ddc9;
+    --celeste:#2f7fa8; --celeste3:#1c5c7e; --ciruela:#7a3e5d; --tenue:#6f6a5c;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--papel);color:var(--tinta);
+    font:15px/1.6 "IBM Plex Mono","Cascadia Mono",Consolas,monospace}
+  .envoltorio{max-width:860px;margin:0 auto;padding:40px 22px 60px}
+  h1{font:700 30px "Silkscreen","Courier New",monospace;margin:0 0 6px}
+  .tagline{color:var(--tenue);margin:0 0 34px;font-size:14px}
+  h2{font:700 13px "Silkscreen","Courier New",monospace;text-transform:uppercase;
+    letter-spacing:.03em;color:var(--celeste3);margin:34px 0 10px}
+  .tarjeta{background:var(--panel);border:2px solid var(--tinta);padding:16px 18px;margin:0 0 14px}
+  p{margin:0 0 10px}
+  ul{margin:0 0 6px;padding-left:20px}
+  li{margin-bottom:6px}
+  code{background:var(--suave);padding:1px 6px;border:1px solid var(--tinta)}
+  .fila{display:flex;flex-wrap:wrap;gap:14px}
+  .paso{flex:1 1 240px;background:var(--panel);border:2px solid var(--tinta);padding:12px 14px}
+  .paso b{color:var(--ciruela)}
+  .boton{display:inline-block;font:700 13px "Silkscreen","Courier New",monospace;text-transform:uppercase;
+    padding:12px 18px;color:var(--papel);background:var(--celeste3);border:2px solid var(--tinta);
+    text-decoration:none}
+  .boton:hover{background:var(--celeste)}
+  .pie{color:var(--tenue);font-size:13px;margin-top:30px}
+  a{color:var(--celeste3)}
+</style>
 </head>
 <body>
-<p>Si no te redirige solo, entrá a <a href="app/">app/</a>.</p>
+<div class="envoltorio">
+  <h1>QuEtool</h1>
+  <p class="tagline">Herramienta educativa libre · modelado molecular en el navegador</p>
+
+  <div class="tarjeta">
+    <p>QuEtool reemplaza la cadena de software propietario de los trabajos prácticos de
+    QSAR y docking (HyperChem + MGLTools + AutoDock Vina de escritorio) por piezas libres
+    que corren enteras en el navegador: dibujás la molécula, calculás geometría y
+    descriptores, la dockeás contra un receptor y mirás las interacciones de la pose.
+    Nada se instala, nada se sube a un servidor y todo el cálculo ocurre en tu máquina.</p>
+    <p><a class="boton" href="app/">Abrir QuEtool</a></p>
+  </div>
+
+  <h2>Las tres etapas</h2>
+  <div class="fila">
+    <div class="paso"><b>Descriptores.</b> Confórmero 3D relajado con MMFF94, energías
+      GFN2-xTB (HOMO, LUMO, gap, dipolo) y descriptores 2D (masa, clogP, refractividad,
+      TPSA, superficie). La tabla de la serie se descarga como CSV y se recarga para
+      seguir otro día.</div>
+    <div class="paso"><b>Docking.</b> AutoDock Vina 1.2.3 compilado a WebAssembly, contra
+      el receptor 2B6A del TP (caja precargada) o cualquier .pdbqt propio. Se descargan
+      las poses y la salida completa con los parámetros.</div>
+    <div class="paso"><b>Complejo.</b> La pose dentro del bolsillo y su mapa de
+      interacciones (puentes de hidrógeno, contactos hidrofóbicos, π–π, halógenos,
+      puentes salinos) con umbrales explícitos, exportable como CSV.</div>
+  </div>
+
+  <h2>De qué está hecha</h2>
+  <div class="tarjeta">
+    <ul>
+      <li>Dibujo y confórmeros: <b>OpenChemLib</b> (MMFF94).</li>
+      <li>Energías electrónicas: <b>GFN2-xTB</b> (occjs, WebAssembly).</li>
+      <li>Descriptores 2D: <b>RDKit</b>.</li>
+      <li>Conversión a PDBQT: <b>OpenBabel</b> (WebAssembly).</li>
+      <li>Docking: <b>Webina</b>, AutoDock Vina 1.2.3 compilado a WebAssembly.</li>
+      <li>Visor 3D: <b>3Dmol.js</b>.</li>
+    </ul>
+    <p>Todo libre y auditado contra el TP: la validación completa (redocking de control,
+    descriptores contra RDKit de línea de comandos, QSAR, serie de docking, interacciones
+    y regresión) está documentada paso a paso en
+    <a href="docs/validacion/00-protocolo.md">docs/validacion/</a>.</p>
+  </div>
+
+  <h2>Para completar el TP de forma remota</h2>
+  <div class="tarjeta">
+    <ul>
+      <li>Elegí la estructura en <b>Estructura de la serie del TP</b>: los diez NNRTI, más
+      T50 de control y EFZ-Br de diseño.</li>
+      <li>Guardá en cada etapa: CSV de descriptores, PDBQT de poses, salida de Vina y CSV
+      de interacciones. Los archivos son el estado: se recargan y seguís donde dejaste.</li>
+      <li>Si el docking no aparece (navegador sin service workers, ventana privada),
+      bajá el repo y abrí <code>app/servir.bat</code> o <code>python app/servidor.py 8000</code>.</li>
+      <li>El código y las instrucciones completas están en
+      <a href="https://github.com/dimacio/modelado_online">github.com/dimacio/modelado_online</a>.</li>
+    </ul>
+  </div>
+
+  <p class="pie">QuEtool · material educativo de química medicinal · hecho con piezas libres ·
+  <a href="https://www.instagram.com/la.data.atada/" rel="noopener noreferrer">@la.data.atada</a></p>
+</div>
 </body>
 </html>

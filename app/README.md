@@ -109,7 +109,9 @@ anterior y lo retoman a distancia:
   HIV-1 (2B6A) — TP" carga el receptor y deja la caja con los parámetros del `conf.txt`
   de la cátedra (centro en el sitio NNRTI, 31 Å de lado, exhaustiveness 10).
 
-**Cómo se usa.** Abrir la app con `servir.bat` (o `python servidor.py 8000`) —el docking
-necesita las cabeceras COOP y COEP, y en GitHub Pages queda deshabilitado—, completar las
-tres pestañas y guardar el CSV de descriptores, los PDBQT de poses y el CSV de
+**Cómo se usa.** En la versión publicada, un *service worker* agrega las cabeceras
+COOP/COEP que el docking necesita (por eso la primera vez la página se recarga sola);
+donde los service workers estén bloqueados (ventana privada de Firefox, políticas
+corporativas), abrila localmente con `servir.bat` o `python servidor.py 8000`. Completá
+las tres pestañas y guardá el CSV de descriptores, los PDBQT de poses y el CSV de
 interacciones. Para retomar en otra máquina o sesión se vuelven a cargar esos archivos.

@@ -231,17 +231,20 @@ a:focus-visible{outline:2px solid var(--celeste);outline-offset:2px}
         <div class="portada" id="portada">
           <div class="portada-caja">
             <h3>Modelado molecular, entero en el navegador</h3>
-            <p class="lead">QuEtool hace lo que en los trabajos prácticos hacíamos con HyperChem y MGLTools: geometría,
-            descriptores y docking. No hay nada que instalar, no hace falta licencia y corre igual en Windows, Mac,
-            Linux o en una máquina administrada. Lo que dibujás tampoco se sube a ningún lado: todo el cálculo
-            ocurre en esta pestaña.</p>
+            <p class="lead">QuEtool reemplaza la cadena HyperChem + MGLTools de los trabajos prácticos de QSAR y
+            docking: geometría, descriptores y docking de AutoDock Vina, todo en esta pestaña. No hay nada que
+            instalar, no hace falta licencia y lo que calculás no se sube a ningún lado. Pensada para completar el
+            TP de la serie NNRTI de punta a punta, y para retomarlo donde lo dejaste: cada etapa se descarga como
+            archivo y se vuelve a cargar.</p>
             <ol class="pasos">
-              <li><b>Dibujá</b> la estructura acá mismo, o pegá un SMILES en el campo de abajo.</li>
-              <li><b>Calculá</b> y salen la geometría 3D y nueve descriptores. En <em>Geometría 3D</em> podés
-                  <em>Distorsionar</em> la molécula y apretar <em>Minimizar</em> para verla reacomodarse
-                  átomo por átomo.</li>
-              <li><b>Dockeá</b> contra un receptor en la pestaña <em>Docking</em>, con AutoDock Vina.</li>
-              <li><b>Mirá el complejo</b>: la pose dentro de la proteína y sus interacciones, medidas y listadas.</li>
+              <li><b>Elegí la estructura</b> en <em>Estructura de la serie del TP</em> —los diez NNRTI, T50 de
+                  control y EFZ-Br de diseño— o dibujala / pegá un SMILES.</li>
+              <li><b>Calculá</b> y salen la geometría 3D y nueve descriptores; cada cálculo se suma a la tabla
+                  <em>Serie</em>, que se descarga como CSV y se recarga con <em>Cargar CSV</em>.</li>
+              <li><b>Dockeá</b> contra el receptor <em>2B6A</em>: la caja del TP queda cargada sola. Guardá el
+                  <em>PDBQT de poses</em> y la <em>salida completa</em> para el informe.</li>
+              <li><b>Mirá el complejo</b>: la pose dentro de la proteína y sus interacciones, medidas y listadas,
+                  con su CSV para la tabla de la Sección V.</li>
             </ol>
             <div class="portada-botones">
               <button id="portadaEmpezar" class="primario azul">Empezar a dibujar</button>
@@ -411,6 +414,10 @@ a:focus-visible{outline:2px solid var(--celeste);outline-offset:2px}
             la geometría y las poses se calculan en tu computadora y no salen de ahí.</p>
             <p>Eso tiene una consecuencia práctica: la velocidad depende de tu máquina, no de la red. Una notebook
             modesta hace los descriptores en pocos segundos y un docking en uno o dos minutos.</p>
+            <p><b>De qué está hecha.</b> Dibujo y confórmeros con OpenChemLib (campo de fuerzas MMFF94); HOMO, LUMO,
+            gap y dipolo con GFN2-xTB compilado a WebAssembly; masa, clogP, refractividad, TPSA y superficie con
+            RDKit; conversión a PDBQT con OpenBabel; docking con Webina, que es AutoDock Vina 1.2.3 compilado a
+            WebAssembly; y el visor 3D con 3Dmol.js. Todo corre en tu navegador: no hay servidor de cálculo.</p>
             <p><button id="verPortada">Volver a ver la portada</button></p>
           </div>
         </div>
