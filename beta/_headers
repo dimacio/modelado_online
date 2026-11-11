@@ -1,0 +1,8 @@
+# Cabeceras para hostings que las respetan (Cloudflare Pages, Netlify).
+# COOP + COEP son lo que habilita SharedArrayBuffer, que Vina necesita para correr.
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: credentialless
+
+/*.wasm
+  Content-Type: application/wasm

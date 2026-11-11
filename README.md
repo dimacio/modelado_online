@@ -30,6 +30,22 @@ Aplicación en uso, verificada de punta a punta dentro de un navegador real. Tie
   hidrofóbica, π–π, halógeno y puente salino) medido sobre la geometría, con tabla exportable a CSV.
   Los criterios geométricos están escritos en la propia pestaña.
 
+## Los dos canales
+
+| | Qué es | Dónde |
+|---|---|---|
+| **QuEtool** | la versión estable, la que usa la cátedra | [`app/`](https://dimacio.github.io/modelado_online/app/) |
+| **BetaTools** | el canal de pruebas: estrena cada funcionalidad antes de que pase a QuEtool | [`beta/`](https://dimacio.github.io/modelado_online/beta/) |
+
+Las dos salen del mismo repositorio y se publican en el mismo sitio, en carpetas distintas;
+el landing de la raíz lleva a cualquiera de las dos. Una funcionalidad nueva se escribe en
+`beta/`, se usa, y recién después se copia a `app/`.
+
+**Lo que hoy tiene BetaTools y QuEtool no:** la pestaña Complejo lee los `.dlg` de AutoDock 4 /
+AutoDock-GPU **con sus clusters** (tabla de población, cluster superpuesto, representantes de
+cada cluster), dibuja la caja de docking leída del propio `.dlg` y permite cargar varios
+ligandos a la vez. Validado en [`docs/validacion/07-dlg-clusters.md`](docs/validacion/07-dlg-clusters.md).
+
 Las mediciones están en `docs/verificacion-navegador.md`; la validación completa contra el
 TP, paso a paso y con sus datos crudos, está en [`docs/validacion/`](docs/validacion/00-protocolo.md).
 
@@ -48,6 +64,7 @@ datos crudos y su código en `docs/validacion/datos/` y `docs/validacion/arnes/`
 | C4 | Serie de docking: los once ligandos contra 2B6A, con Webina (Vina 1.2.3 en WebAssembly) | once corridas sin fallas y pose de cada uno dentro del bolsillo NNRTI (centroide a ≤ 10 Å del de T50) | 0,19–1,65 Å → **ACEPTA** | `04-docking-serie.md` |
 | C5 | Interacciones de la pestaña Complejo | tabla ligando × residuo; los residuos detectados incluyen los del sitio NNRTI de la bibliografía | 86–100 % de contactos en el sitio; Tyr181/Tyr188 en todos → **ACEPTA** | `05-interacciones.md` |
 | C6 | pIC50 = f(ΔGdock) | sin criterio de aprobación (el TP pregunta *si* la relación es significativa) | no robusta entre corridas (R² de 0,02 a 0,44) → **reportado** | `06-regresion-dG.md` |
+| C7 | Lectura de `.dlg` de AutoDock y sus clusters en la pestaña Complejo (BetaTools) | leer una campaña entera sin fallas, no alterar el mapa de interacciones de C5, y andar en un navegador real | 1553/1553 `.dlg`; 12/12 CSV idénticos; 18/18 en Firefox → **ACEPTA** | `07-dlg-clusters.md` |
 
 **Cómo se corrió.** El docking usó el mismo motor que la app (Webina 1.0.5, AutoDock Vina
 1.2.3 compilado a WebAssembly) ejecutado desde Node.js con un arnés que replica la
@@ -77,19 +94,22 @@ visita recarga sola una vez: es esperable y está documentado en el propio scrip
 ## Contenido
 
 ```
-app/                              la aplicación: un solo index.html, sin compilación
+index.html                        el landing: lleva a QuEtool o a la Beta
+app/                              QuEtool, la versión estable: un solo index.html, sin compilación
   servidor.py, servir.bat         servidor local con las cabeceras que el docking necesita
   coi-serviceworker.js            las mismas cabeceras cuando el hosting no deja ponerlas
   _headers                        las mismas cabeceras en Cloudflare Pages o Netlify
   lib/                            Webina (Vina) y OpenBabel compilados a WebAssembly
   datos/                          receptor de ejemplo en PDBQT
+beta/                             BetaTools, el canal de pruebas: la misma estructura que app/
+                                  con lo que todavía no pasó a la estable
 docs/
   paleta-opciones.html            las cinco paletas que se evaluaron para la interfaz
   referencia-tp-qsar-docking.md   qué piden los trabajos prácticos: datos, parámetros,
                                   consignas y requisitos funcionales
   fundamentos-y-analisis.md       estado del arte, factibilidad y validación
   verificacion-navegador.md       mediciones dentro de Chromium
-  validacion/                     protocolo pre-registrado (00), pasos 01–06, bitácoras
+  validacion/                     protocolo pre-registrado (00), pasos 01–07, bitácoras
                                   de desarrollo, datos crudos y arnés de cada corrida
 spike/                            prueba de concepto ejecutable
 data/
