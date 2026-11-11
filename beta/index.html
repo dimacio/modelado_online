@@ -372,6 +372,7 @@ a:focus-visible{outline:2px solid var(--celeste);outline-offset:2px}
         <button id="mCluster" title="La pose elegida más el resto de su cluster en alambre">Cluster</button>
         <button id="mRepres" title="La mejor pose de cada cluster, cada una de un color">Representantes</button>
         <button id="vCaja" class="activa" title="La caja de docking, leída del .dlg">Caja</button>
+        <button id="vCristal" class="activa" title="El ligando cristalográfico de referencia, si el .dlg lo trae" hidden>Cristal</button>
         <button id="vCinta" class="activa">Cinta</button>
         <button id="vSuperficie">Superficie</button>
         <button id="vDistancias" class="activa">Distancias</button>
@@ -1303,7 +1304,7 @@ const cEstado = (t, err) => { const e = $('complejoEstado'); e.textContent = t; 
 let visorC = null, posesC = [], interActual = [], verSup = false, verDist = true, verCinta = true, poseRenderizada = -1;
 // un "conjunto" es un archivo cargado: sus poses y, si vino de un .dlg, sus clusters
 let conjuntos = [], conjActual = 0, modoVista = 'pose', claveRender = '', avisoC = '';
-let receptorNombre = '', verCaja = true;
+let receptorNombre = '', verCaja = true, verCristal = true;
 const COLOR_CLUSTER = ['#5b4453', '#2f7fa8', '#a8894a', '#3f7a63', '#a0523a', '#684d5e',
   '#7a6f9b', '#4f7d4f', '#b06a86', '#56707d'];
 // del undécimo cluster en adelante, gris: en docking ciego hay decenas y el color deja de informar
@@ -1354,6 +1355,18 @@ function leerDLG(txt) {
     rmstol: +((campo(/^RMSD tolerance:\s*([\d.]+)/m) || [])[1]) || null,
     nrun: +((campo(/^Number of runs:\s*(\d+)/m) || [])[1]) || null,
   };
+  // Si la corrida llevó --xraylfile, el .dlg trae el ligando cristalográfico entero y la
+  // columna "Reference RMSD" de la tabla es el RMSD contra el cristal, ya corregido por
+  // simetría por el propio AutoDock. Sin --xraylfile esa columna mide contra la geometría
+  // de entrada y no significa nada: por eso no se muestra.
+  const xray = lineas.filter((l) => l.startsWith('XRAY-LIGAND-PDBQT:')).map((l) => l.slice(19));
+  if (xray.some((l) => /^(ATOM|HETATM)/.test(l))) {
+    // el nombre sale del REMARK del PDBQT de referencia y, si no lo trae, de --xraylfile
+    meta.xray = (((txt.match(/^XRAY-LIGAND-PDBQT: REMARK\s+Name = (.+)$/m) || [])[1]
+      || (txt.match(/--xraylfile\s+(\S+)/) || [])[1] || '').trim()
+      .replace(/^.*[\\/]/, '')) || 'ligando de referencia';
+    meta.xrayLineas = xray.filter((l) => /^(ATOM|HETATM)/.test(l));
+  }
   const poses = []; let act = null;
   for (const raw of lineas) {
     if (!raw.startsWith('DOCKED:')) continue;
@@ -1395,6 +1408,19 @@ function leerDLG(txt) {
   // presentar las poses en el orden del ranking de AutoDock, no en el de las corridas
   if (clusters.length) buenas.sort((a, b) => (a.cluster - b.cluster) || (a.sub - b.sub));
   return { poses: buenas, clusters, meta };
+}
+
+// El ranking de AutoDock ordena los clusters por energía sola, así que el cluster 1 puede
+// ser una pose que apareció una sola vez. El criterio del proyecto pesa también la
+// población: entre los clusters con al menos FRAC_MIN de las corridas, el de menor ΔG.
+const FRAC_MIN = 0.10;
+function clusterElegido(c) {
+  if (!c || !c.clusters.length) return null;
+  const total = c.poses.length;
+  const pasan = c.clusters.filter((x) => x.n / total >= FRAC_MIN);
+  const lista = pasan.length ? pasan : c.clusters;
+  const elegido = lista.reduce((m, x) => (x.mejor < m.mejor ? x : m), lista[0]);
+  return { ...elegido, sinPoblacion: !pasan.length, distintoDelRank1: elegido.rank !== c.clusters[0].rank };
 }
 
 // a qué posición de la lista de poses corresponde cada miembro de cada cluster
@@ -1751,6 +1777,12 @@ function pintarComplejo() {
         .some((d, k) => semi[k] - Math.abs(d) < 1)).length;
   }
 
+  // el ligando cristalográfico, que el propio .dlg trae cuando se corrió con --xraylfile
+  if (meta.xrayLineas && verCristal) {
+    visorC.addModel(aPDB(meta.xrayLineas.join('\n'), true), 'pdb');
+    visorC.setStyle({ model: 2 + extras.length }, { stick: { radius: 0.08, color: '#2f7fa8' } });
+  }
+
   if (verSup)
     visorC.addSurface($3Dmol.SurfaceType.VDW, { opacity: 0.55, color: '#d8d5cc' }, { model: 0, resi: residuos });
 
@@ -1789,7 +1821,9 @@ function pintarComplejo() {
     const resto = conj.clusters.length - COLOR_CLUSTER.length;
     if (resto > 0) ley += `<span class="it"><span class="mu" style="border-color:#8c8578"></span>+${resto} cluster${resto > 1 ? 's' : ''} más, en gris</span>`;
   }
-  else if (modoVista === 'cluster' && extras.length)
+  if (meta.xrayLineas && verCristal)
+    ley += `<span class="it"><span class="mu" style="border-color:#2f7fa8"></span>cristal (${meta.xray})</span>`;
+  if (modoVista === 'cluster' && extras.length)
     ley += `<span class="it"><span class="mu" style="border-color:#9a9285"></span>${extras.length} miembro${extras.length > 1 ? 's' : ''} del cluster</span>`;
   $('leyenda').innerHTML = ley;
   const etq = conj && conj.tipo === 'dlg'
@@ -1799,7 +1833,9 @@ function pintarComplejo() {
   $('pieComplejo').textContent = `${conj && conjuntos.length > 1 ? conj.nombre + ' · ' : ''}${etq} · ` +
     `${lig.filter((a) => a.el !== 'H').length} átomos pesados · ${interActual.length} interacciones · ` +
     `${((performance.now() - t0) / 1000).toFixed(1)} s` +
-    (enPared ? ` · ${enPared} átomo${enPared > 1 ? 's' : ''} a menos de 1 Å de la pared de la caja` : '');
+    (enPared ? ` · ${enPared} átomo${enPared > 1 ? 's' : ''} a menos de 1 Å de la pared de la caja` : '') +
+    (meta.xray && pose.rmsdRef !== undefined
+      ? ` · RMSD al cristal ${pose.rmsdRef.toFixed(2)} Å${pose.rmsdRef < 2 ? ' ✓' : ''}` : '');
   pintarTablaInter();
   pintarTablaClusters();
   poseRenderizada = i;
@@ -1829,11 +1865,16 @@ function csvInter() {
 function pintarSelPoses() {
   const c = conjuntos[conjActual]; if (!c) return;
   posesC = c.poses;
+  $('vCristal').hidden = !(c.meta && c.meta.xrayLineas);
+  const eleg = clusterElegido(c);
   $('poseSel').innerHTML = c.poses.map((p, i) => {
     const dg = p.dg !== null && p.dg !== undefined ? ` — ${p.dg.toFixed(2)} kcal/mol` : '';
     const cl = p.cluster ? ` · cluster ${p.cluster}` : '';
-    return `<option value="${i}">${c.tipo === 'dlg' ? `Corrida ${p.run}` : `Pose ${i + 1}`}${dg}${cl}</option>`;
+    const rm = c.meta && c.meta.xray && p.rmsdRef !== undefined ? ` · cristal ${p.rmsdRef.toFixed(2)} Å` : '';
+    return `<option value="${i}">${c.tipo === 'dlg' ? `Corrida ${p.run}` : `Pose ${i + 1}`}${dg}${cl}${rm}</option>`;
   }).join('');
+  // la pose por defecto es la del cluster que elige el criterio, no la primera del ranking
+  if (eleg && eleg.idx && eleg.idx.length) $('poseSel').value = eleg.idx[0];
 }
 
 function pintarTablaClusters() {
@@ -1846,21 +1887,56 @@ function pintarTablaClusters() {
   const total = c.poses.length;
   const sel = c.poses[+$('poseSel').value];
   const max = Math.max(...c.clusters.map((x) => x.n));
+  const conCristal = !!(c.meta && c.meta.xray);
+  const eleg = clusterElegido(c);
   caja.innerHTML = '<div class="desborde"><table><thead><tr>' +
-    '<th>Cluster</th><th>ΔG mejor</th><th>ΔG medio</th><th>N</th><th>% de corridas</th><th>Población</th>' +
+    '<th>Cluster</th><th>ΔG mejor</th><th>ΔG medio</th><th>N</th><th>% de corridas</th>' +
+    (conCristal ? '<th>RMSD cristal</th>' : '') + '<th>Población</th>' +
     '</tr></thead><tbody>' + c.clusters.map((x, k) => {
       const pct = (100 * x.n / total);
       const color = colorCluster(k);
       const act = sel && sel.cluster === x.rank;
+      const esEleg = eleg && eleg.rank === x.rank;
       return `<tr class="filaCluster${act ? ' activa' : ''}" data-rank="${x.rank}" style="cursor:pointer${act ? ';font-weight:700' : ''}">` +
-        `<td><span class="tipo"><i style="background:${color}"></i>${x.rank}</span></td>` +
+        `<td><span class="tipo"><i style="background:${color}"></i>${x.rank}` +
+        `${esEleg ? ' <b title="El que elige el criterio: población mínima y, entre esos, menor ΔG">◀ elegido</b>' : ''}</span></td>` +
         `<td>${x.mejor.toFixed(2)}</td><td>${x.media.toFixed(2)}</td><td>${x.n}</td>` +
         `<td>${pct.toFixed(0)} %</td>` +
+        (conCristal ? (() => {
+          // la de la pose de MENOR ENERGÍA, que es la que uno reportaría de este cluster.
+          // Entre paréntesis, la mejor de todo el cluster: responde otra pregunta —si el
+          // cluster contiene una pose buena— y siempre es igual o más optimista.
+          const r = c.poses[x.idx[0]] ? c.poses[x.idx[0]].rmsdRef : undefined;
+          const mins = x.idx.map((j) => c.poses[j].rmsdRef).filter((v) => v !== undefined);
+          const mn = mins.length ? Math.min(...mins) : undefined;
+          if (r === undefined) return '<td>—</td>';
+          return `<td>${r.toFixed(2)}${r < 2 ? ' ✓' : ''}` +
+            `${mn !== undefined && r - mn > 0.05 ? ` <span style="opacity:.6">(mín ${mn.toFixed(2)})</span>` : ''}</td>`;
+        })() : '') +
         `<td><span style="display:inline-block;height:9px;width:${Math.max(2, 100 * x.n / max)}px;background:${color};vertical-align:middle"></span></td></tr>`;
     }).join('') + '</tbody></table></div>' +
     `<p class="nota" style="margin:8px 0 0">${c.clusters.length} cluster${c.clusters.length > 1 ? 's' : ''} sobre ${total} corridas. ` +
     `El cluster 1 se queda con el ${(100 * c.clusters[0].n / total).toFixed(0)} % de ellas: cuanto más alto, más convergió la búsqueda. ` +
     'Un ΔG bueno con población baja es una pose que apareció una vez.</p>' +
+    (eleg
+      ? `<p class="nota" style="margin:4px 0 0"><b>Elegido: cluster ${eleg.rank}</b> ` +
+        `(ΔG ${eleg.mejor.toFixed(2)}, ${(100 * eleg.n / total).toFixed(0)} % de las corridas). ` +
+        'El criterio no es el ΔG solo: primero se piden al menos <b>10 % de las corridas</b> y, entre los ' +
+        'clusters que lo cumplen, se toma el de menor ΔG. ' +
+        (eleg.sinPoblacion
+          ? '<b>Ningún cluster llega al 10 %</b>, así que esto es sólo el de menor ΔG: la búsqueda no convergió.'
+          : eleg.distintoDelRank1
+            ? `No es el cluster 1: ese gana por energía pero se queda con el ${(100 * c.clusters[0].n / total).toFixed(0)} % de las corridas.`
+            : 'Coincide con el cluster 1 de AutoDock, que ordena por energía sola.') + '</p>'
+      : '') +
+    (conCristal
+      ? `<p class="nota" style="margin:4px 0 0">RMSD contra <b>${c.meta.xray}</b>, el ligando cristalográfico: ` +
+        'es la columna <i>Reference RMSD</i> del propio <code>.dlg</code>, que AutoDock calcula ' +
+        '<b>corrigiendo por simetría</b> (recalcularla átomo contra átomo infla el valor en ligandos con ' +
+        'anillos simétricos). La columna es la de la pose de <b>menor ΔG</b> del cluster, que es la que ' +
+        'uno reportaría; entre paréntesis, cuando difiere, la mejor de todo el cluster, que responde otra ' +
+        'pregunta y siempre es más optimista. Un redocking de control acepta con <b>≤ 2 Å</b>.</p>'
+      : '') +
     (c.meta && c.meta.rmstol
       ? `<p class="nota" style="margin:4px 0 0">Agrupados por AutoDock con tolerancia de <b>${c.meta.rmstol.toFixed(1)} Å</b>` +
         `${c.meta.receptor ? `, contra <b>${c.meta.receptor}</b>` : ''}. ` +
@@ -1955,6 +2031,10 @@ $('vDistancias').addEventListener('click', () => {
 });
 $('vCaja').addEventListener('click', () => {
   verCaja = !verCaja; $('vCaja').classList.toggle('activa', verCaja);
+  if (posesC.length) { claveRender = ''; repintar(); }
+});
+$('vCristal').addEventListener('click', () => {
+  verCristal = !verCristal; $('vCristal').classList.toggle('activa', verCristal);
   if (posesC.length) { claveRender = ''; repintar(); }
 });
 $('vCinta').addEventListener('click', () => {

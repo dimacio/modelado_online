@@ -43,8 +43,10 @@ el landing de la raíz lleva a cualquiera de las dos. Una funcionalidad nueva se
 
 **Lo que hoy tiene BetaTools y QuEtool no:** la pestaña Complejo lee los `.dlg` de AutoDock 4 /
 AutoDock-GPU **con sus clusters** (tabla de población, cluster superpuesto, representantes de
-cada cluster), dibuja la caja de docking leída del propio `.dlg` y permite cargar varios
-ligandos a la vez. Validado en [`docs/validacion/07-dlg-clusters.md`](docs/validacion/07-dlg-clusters.md).
+cada cluster), dibuja la caja de docking leída del propio `.dlg`, muestra el **RMSD contra el
+ligando cristalográfico** y lo dibuja cuando el `.dlg` trae referencia, **elige el cluster
+pesando energía y población** —y no energía sola, que es lo que hace el ranking de AutoDock—
+y permite cargar varios ligandos a la vez. Validado en [`docs/validacion/07-dlg-clusters.md`](docs/validacion/07-dlg-clusters.md).
 
 Las mediciones están en `docs/verificacion-navegador.md`; la validación completa contra el
 TP, paso a paso y con sus datos crudos, está en [`docs/validacion/`](docs/validacion/00-protocolo.md).

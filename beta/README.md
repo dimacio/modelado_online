@@ -124,6 +124,17 @@ Tres modos de vista:
   undécimo en adelante, gris). Es la vista del docking ciego: muestra en qué partes de la
   proteína cayeron las familias de poses.
 
+**Qué cluster es «el» cluster.** El ranking de AutoDock ordena por energía, así que su
+cluster 1 puede ser una pose que apareció una sola vez. La pestaña marca —y abre en— el que
+elige el criterio del proyecto: **población de al menos el 10 % de las corridas y, entre los
+que lo cumplen, el de menor ΔG**. Cuando los dos no coinciden, la tarjeta lo dice.
+
+**RMSD contra el cristal.** Si la corrida llevó `--xraylfile`, el `.dlg` trae el ligando
+cristalográfico entero y la columna *Reference RMSD*, que AutoDock calcula corrigiendo por
+simetría. La pestaña muestra ese número —no lo recalcula— y dibuja el cristal sobre la pose.
+Un redocking de control acepta con ≤ 2 Å. Si el `.dlg` no trae referencia, no se muestra
+nada: esa columna mediría contra la geometría de entrada y no significaría nada.
+
 Se pueden cargar **varios archivos a la vez** y pasar de uno a otro con el selector de arriba:
 el mismo ligando en distintas cajas, o con distintas cargas parciales.
 

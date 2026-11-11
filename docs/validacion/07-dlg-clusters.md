@@ -36,6 +36,19 @@ cargar varios archivos a la vez.
    tocan. Es el síntoma de cargar un receptor que no corresponde, o de una caja puesta en
    otro lado.
 
+8. **RMSD contra el ligando cristalográfico**, cuando la corrida llevó `--xraylfile`. El
+   número **no se recalcula**: es la columna *Reference RMSD* de la `RMSD TABLE`, que
+   AutoDock calcula **corrigiendo por simetría** (recalcularla átomo contra átomo infla el
+   valor en ligandos con anillos simétricos: X77/6W63 da 1,42 Å por nombre de átomo contra
+   0,85 Å con la corrección). Si el `.dlg` no declara ligando de referencia, la columna mide
+   contra la geometría de entrada y no significa nada, así que no se muestra.
+9. **El ligando cristalográfico dibujado**, sacado del propio `.dlg`: la sección
+   `XRAY-LIGAND-PDBQT` trae sus coordenadas, así que no hace falta cargar ningún archivo.
+10. **El cluster se elige pesando energía y población**, no energía sola. El ranking de
+    AutoDock ordena por ΔG, y por eso su cluster 1 puede ser una pose que apareció una vez.
+    El criterio del proyecto —población ≥ 10 % de las corridas y, entre los que pasan, el de
+    menor ΔG— es el que la pestaña marca y el que preselecciona al abrir el archivo.
+
 El encuadre sigue a las poses: si están todas en el mismo bolsillo se acerca, y si andan
 desparramadas —el caso del docking ciego— abre a toda la proteína.
 
@@ -45,7 +58,8 @@ desparramadas —el caso del docking ciego— abre a toda la proteína.
 |---|---|---|---|
 | C7.1 | Lectura de una campaña entera de `.dlg` | en cada archivo: poses con ΔG, suma de clusters = número de corridas, y cada cluster con sus miembros indexados | **1553/1553 archivos, 0 fallas → ACEPTA** |
 | C7.2 | Que el mapa de interacciones no haya cambiado | las once poses de C4 contra 2B6A, idénticas fila por fila a los CSV de C5 | **12/12 idénticos → ACEPTA** |
-| C7.3 | La pestaña en un navegador real | las 18 comprobaciones de `c7-complejo-navegador.py` | **18/18 → ACEPTA** |
+| C7.3 | La pestaña en un navegador real | las 32 comprobaciones de `c7-complejo-navegador.py` | **32/32 → ACEPTA** |
+| C7.4 | RMSD al cristal y elección de cluster en los cuatro controles de redocking | reproducir la `RMSD TABLE` del `.dlg` y que el criterio elija el cluster correcto | **7/7 → ACEPTA** |
 
 Los datos de C7.1 son los 1553 `.dlg` de la campaña de `dimacio/quimioteca-gaussian`
 (`autodock/gpu/results/`, 20 condiciones: 6LU7, 6W63 y 7QCH/7LBR, cajas enfocada, ciega,
@@ -64,6 +78,31 @@ excepción. Corregido; el barrido pasó a 1553/1553.
 Vale como advertencia general: probar el lector con los dockings que salieron bien no
 alcanza, porque justamente los casos degenerados son los que traen los formatos raros.
 
+## El caso que justifica pesar la población
+
+`A5I/7QCH` es el ejemplo: el **mínimo de energía** es el cluster 1, con **1 de 50 corridas**
+y a **4,27 Å** del cristal. La pose correcta —**1,00 Å**— es el cluster 2, con 49 de 50. Con
+el criterio del proyecto la pestaña abre directamente en el cluster 2; ordenando por energía
+sola, abriría en la pose equivocada. Los otros tres controles dan lo mismo por los dos
+caminos, porque su cluster 1 ya es el poblado.
+
+| Control | Criterio (población + ΔG) | Energía sola | RMSD al cristal |
+|---|---|---|---|
+| A5I / 7QCH | cluster 2 — 98 % | cluster 1 — 2 % | **1,00** vs 4,27 |
+| X77 / 6W63 | cluster 1 — 100 % | igual | 0,88 |
+| XT7 / 7LBR | cluster 1 — 30 % | igual | 1,95 |
+
+## Una diferencia con los controles ya publicados
+
+Los `.txt` de `gpu/salida_adt/controls/` (generados por `cluster_rmsd.py`) informan, por
+cluster, el **mejor RMSD de cualquiera de sus miembros**. La pestaña informa el de la pose
+de **menor ΔG**, que es la que uno reportaría, y entre paréntesis el mínimo del cluster
+cuando difieren. Donde más se nota es en XT7/7LBR: el publicado es **1,30 Å** —el mejor
+miembro, la corrida 46— mientras que la pose que gana por energía, la corrida 39, está a
+**1,95 Å**. El control sigue aceptando (≤ 2 Å), pero con menos margen del que sugiere la
+tabla. Son dos preguntas distintas: «¿el cluster contiene una pose buena?» y «¿la pose que
+elegiría reproduce el cristal?».
+
 ## Cómo reproducirlo
 
 ```bash
@@ -72,6 +111,10 @@ node docs/validacion/arnes/c7-barrido-dlg.mjs beta/index.html <carpeta con los .
 
 # C7.2 — regresión del mapa de interacciones
 node docs/validacion/arnes/c7-regresion-c5.mjs beta/index.html docs/validacion/datos
+
+# C7.4 — RMSD al cristal y criterio de cluster, contra los controles del proyecto
+node docs/validacion/arnes/c7-controles-cristal.mjs beta/index.html \
+     <carpeta controls/results> <un .dlg de producción>
 
 # C7.3 — la pestaña en Firefox
 #   copiar los .dlg y el receptor a beta/datos/, y en dos terminales:
