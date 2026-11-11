@@ -13,6 +13,10 @@ modelos QSAR con su análisis estadístico.
 Está pensado para los trabajos prácticos de Química Medicinal (FFyB-UBA), pero sirve para
 cualquier curso que necesite estas herramientas.
 
+**Probalo en línea:** <https://dimacio.github.io/modelado_online/> — el landing en la
+raíz, la aplicación en [`app/`](https://dimacio.github.io/modelado_online/app/), sin
+instalar nada.
+
 ## Estado
 
 Aplicación en uso, verificada de punta a punta dentro de un navegador real. Tiene tres pestañas:
