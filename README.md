@@ -28,7 +28,9 @@ Aplicación en uso, verificada de punta a punta dentro de un navegador real. Tie
   corrida con *exhaustiveness* 8 y un núcleo tarda entre diez y quince segundos.
 - **Complejo** — la pose dentro de la proteína y un mapa de interacciones (puente de hidrógeno,
   hidrofóbica, π–π, halógeno y puente salino) medido sobre la geometría, con tabla exportable a CSV.
-  Los criterios geométricos están escritos en la propia pestaña.
+  Los criterios geométricos están escritos en la propia pestaña. Lee las poses de Vina y también
+  el `.dlg` de AutoDock 4 / AutoDock-GPU **con sus clusters**: tabla de población, vista del
+  cluster superpuesto, representantes de cada cluster y varios ligandos cargados a la vez.
 
 Las mediciones están en `docs/verificacion-navegador.md`; la validación completa contra el
 TP, paso a paso y con sus datos crudos, está en [`docs/validacion/`](docs/validacion/00-protocolo.md).
@@ -48,6 +50,7 @@ datos crudos y su código en `docs/validacion/datos/` y `docs/validacion/arnes/`
 | C4 | Serie de docking: los once ligandos contra 2B6A, con Webina (Vina 1.2.3 en WebAssembly) | once corridas sin fallas y pose de cada uno dentro del bolsillo NNRTI (centroide a ≤ 10 Å del de T50) | 0,19–1,65 Å → **ACEPTA** | `04-docking-serie.md` |
 | C5 | Interacciones de la pestaña Complejo | tabla ligando × residuo; los residuos detectados incluyen los del sitio NNRTI de la bibliografía | 86–100 % de contactos en el sitio; Tyr181/Tyr188 en todos → **ACEPTA** | `05-interacciones.md` |
 | C6 | pIC50 = f(ΔGdock) | sin criterio de aprobación (el TP pregunta *si* la relación es significativa) | no robusta entre corridas (R² de 0,02 a 0,44) → **reportado** | `06-regresion-dG.md` |
+| C7 | Lectura de `.dlg` de AutoDock y sus clusters en la pestaña Complejo | leer una campaña entera sin fallas, no alterar el mapa de interacciones de C5, y andar en un navegador real | 1553/1553 `.dlg`; 12/12 CSV idénticos; 18/18 en Firefox → **ACEPTA** | `07-dlg-clusters.md` |
 
 **Cómo se corrió.** El docking usó el mismo motor que la app (Webina 1.0.5, AutoDock Vina
 1.2.3 compilado a WebAssembly) ejecutado desde Node.js con un arnés que replica la
