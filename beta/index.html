@@ -130,6 +130,25 @@ th{font:700 .56rem var(--pix);text-transform:uppercase;color:var(--tenue);backgr
 .vistas{display:flex;gap:5px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
 .vistas button.activa{background:var(--celeste);color:var(--tinta)}
 .pie3d{margin-left:auto;font:.72rem var(--mono);color:var(--tenue)}
+
+/* Mapa de contactos: matriz ligando x residuo. Misma tinta que el resto; la
+   intensidad es la frecuencia del contacto dentro del cluster. */
+#mapaContactos table{border-collapse:separate;border-spacing:2px;font:.72rem var(--mono)}
+#mapaContactos th{font-weight:500;color:var(--tenue);padding:0}
+#mapaContactos thead th{height:74px;vertical-align:bottom;width:22px}
+#mapaContactos thead th span{writing-mode:vertical-rl;transform:rotate(180deg);
+  display:inline-block;white-space:nowrap;padding-bottom:3px}
+#mapaContactos thead th.cat span{color:var(--alerta);font-weight:600}
+#mapaContactos tbody th{text-align:left;padding-right:9px;white-space:nowrap;
+  position:sticky;left:0;background:var(--panel);color:var(--tinta);z-index:1}
+#mapaContactos tbody th .n{color:var(--tenue)}
+#mapaContactos td{width:22px;height:22px;padding:0;border:1px solid var(--raya);
+  background:var(--lienzo)}
+#mapaContactos td.c{border-color:transparent;cursor:help}
+#mapaContactos td.c:hover{outline:2px solid var(--tinta);outline-offset:-1px}
+#mapaContactos .escala{display:flex;align-items:center;gap:7px;margin-top:11px;
+  font:.72rem var(--mono);color:var(--tenue);flex-wrap:wrap}
+#mapaContactos .escala i{width:22px;height:11px;display:block;border:1px solid var(--raya)}
 #caja3d{position:relative}
 #visor3d{width:100%;height:100%;cursor:grab}
 .taller{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;padding:9px 11px;
@@ -372,6 +391,7 @@ a:focus-visible{outline:2px solid var(--celeste);outline-offset:2px}
         <button id="mCluster" title="La pose elegida más el resto de su cluster en alambre">Cluster</button>
         <button id="mRepres" title="La mejor pose de cada cluster, cada una de un color">Representantes</button>
         <button id="vCaja" class="activa" title="La caja de docking, leída del .dlg">Caja</button>
+        <button id="vCristal" class="activa" title="El ligando cristalográfico de referencia, si el .dlg lo trae" hidden>Cristal</button>
         <button id="vCinta" class="activa">Cinta</button>
         <button id="vSuperficie">Superficie</button>
         <button id="vDistancias" class="activa">Distancias</button>
@@ -399,6 +419,23 @@ a:focus-visible{outline:2px solid var(--celeste);outline-offset:2px}
         <div class="acciones" style="margin-top:12px">
           <button id="copiarInter">Copiar como CSV</button>
           <button id="bajarInter">Descargar CSV</button>
+        </div>
+      </div>
+      <div class="tarjeta">
+        <h2>Mapa de contactos</h2>
+        <p class="ayuda" style="margin-top:0">Qué residuos toca <em>cada ligando cargado</em>, uno al lado del otro.
+          La tabla de arriba mira una pose; ésta compara todos los ligandos a la vez y cuenta en
+          cuántas poses del cluster aparece cada contacto, que es lo que distingue un contacto
+          sostenido de uno que salió una sola vez.</p>
+        <div class="vistas" style="margin:0 0 12px">
+          <button id="calcMapa" class="primario">Calcular el mapa</button>
+          <button id="mapaCluster" class="activa">Todo el cluster</button>
+          <span class="pie3d" id="pieMapa"></span>
+        </div>
+        <div id="mapaContactos"><p class="vacio">Cargá uno o más <code>.dlg</code> y el receptor, y apretá «Calcular el mapa».</p></div>
+        <div class="acciones" style="margin-top:12px">
+          <button id="copiarMapa" disabled>Copiar como CSV</button>
+          <button id="bajarMapa" disabled>Descargar CSV</button>
         </div>
       </div>
       <div class="tarjeta">
@@ -1303,7 +1340,7 @@ const cEstado = (t, err) => { const e = $('complejoEstado'); e.textContent = t; 
 let visorC = null, posesC = [], interActual = [], verSup = false, verDist = true, verCinta = true, poseRenderizada = -1;
 // un "conjunto" es un archivo cargado: sus poses y, si vino de un .dlg, sus clusters
 let conjuntos = [], conjActual = 0, modoVista = 'pose', claveRender = '', avisoC = '';
-let receptorNombre = '', verCaja = true;
+let receptorNombre = '', verCaja = true, verCristal = true;
 const COLOR_CLUSTER = ['#5b4453', '#2f7fa8', '#a8894a', '#3f7a63', '#a0523a', '#684d5e',
   '#7a6f9b', '#4f7d4f', '#b06a86', '#56707d'];
 // del undécimo cluster en adelante, gris: en docking ciego hay decenas y el color deja de informar
@@ -1337,6 +1374,46 @@ function separarPoses(txt) {
   return poses.filter((p) => p.lineas.some((l) => /^(ATOM|HETATM)/.test(l)));
 }
 
+// Tolerancia de reagrupamiento, en Å. El .dlg trae el clustering de AutoDock a 2,0 Å
+// —su valor por omisión—, que junta poses distinguibles e infla la población del primer
+// cluster. 1,0 Å es el criterio del proyecto, y es el que se usa acá.
+const RMSTOL = 1.0;
+
+// El clustering de AutoDock: ordenar por energía, sembrar con la mejor pose libre y
+// pegarle toda pose a <= tol. El RMSD es de átomos pesados y SIN realinear, porque las
+// poses ya están en el marco del receptor. Los hidrógenos polares (tipo HD) quedan
+// afuera: son los únicos que trae un PDBQT y su posición sigue a los pesados.
+function agrupar(poses, tol) {
+  const xyz = poses.map((p) => p.lineas.filter((l) => /^(ATOM|HETATM)/.test(l))
+    .filter((l) => !['H', 'HD'].includes((l.slice(77, 79).trim() || l.slice(12, 14).trim()).toUpperCase()))
+    .map((l) => [+l.slice(30, 38), +l.slice(38, 46), +l.slice(46, 54)]));
+  const orden = poses.map((_, i) => i).sort((a, b) => (poses[a].dg ?? 0) - (poses[b].dg ?? 0));
+  const rmsd = (a, b) => {
+    const A = xyz[a], B = xyz[b], n = Math.min(A.length, B.length);
+    if (!n) return Infinity;
+    let s = 0;
+    for (let k = 0; k < n; k++)
+      s += (A[k][0] - B[k][0]) ** 2 + (A[k][1] - B[k][1]) ** 2 + (A[k][2] - B[k][2]) ** 2;
+    return Math.sqrt(s / n);
+  };
+  const libre = new Set(orden);
+  const clusters = [];
+  for (const i of orden) {
+    if (!libre.has(i)) continue;
+    libre.delete(i);
+    const miembros = [i];
+    for (const j of [...libre]) if (rmsd(i, j) <= tol) { libre.delete(j); miembros.push(j); }
+    const rank = clusters.length + 1;
+    miembros.forEach((j, k) => {
+      poses[j].cluster = rank; poses[j].sub = k + 1; poses[j].rmsdCluster = rmsd(i, j);
+    });
+    const dgs = miembros.map((j) => poses[j].dg ?? 0);
+    clusters.push({ rank, n: miembros.length, runs: miembros.map((j) => poses[j].run),
+      mejor: Math.min(...dgs), media: dgs.reduce((a, b) => a + b, 0) / dgs.length });
+  }
+  return clusters;
+}
+
 // ── AutoDock 4 / AutoDock-GPU: el .dlg ──
 // Las líneas de coordenadas vienen con el prefijo "DOCKED: "; sacado el prefijo son PDBQT
 // común, así que el resto de la pestaña no cambia. Los clusters NO se recalculan acá: se
@@ -1354,6 +1431,18 @@ function leerDLG(txt) {
     rmstol: +((campo(/^RMSD tolerance:\s*([\d.]+)/m) || [])[1]) || null,
     nrun: +((campo(/^Number of runs:\s*(\d+)/m) || [])[1]) || null,
   };
+  // Si la corrida llevó --xraylfile, el .dlg trae el ligando cristalográfico entero y la
+  // columna "Reference RMSD" de la tabla es el RMSD contra el cristal, ya corregido por
+  // simetría por el propio AutoDock. Sin --xraylfile esa columna mide contra la geometría
+  // de entrada y no significa nada: por eso no se muestra.
+  const xray = lineas.filter((l) => l.startsWith('XRAY-LIGAND-PDBQT:')).map((l) => l.slice(19));
+  if (xray.some((l) => /^(ATOM|HETATM)/.test(l))) {
+    // el nombre sale del REMARK del PDBQT de referencia y, si no lo trae, de --xraylfile
+    meta.xray = (((txt.match(/^XRAY-LIGAND-PDBQT: REMARK\s+Name = (.+)$/m) || [])[1]
+      || (txt.match(/--xraylfile\s+(\S+)/) || [])[1] || '').trim()
+      .replace(/^.*[\\/]/, '')) || 'ligando de referencia';
+    meta.xrayLineas = xray.filter((l) => /^(ATOM|HETATM)/.test(l));
+  }
   const poses = []; let act = null;
   for (const raw of lineas) {
     if (!raw.startsWith('DOCKED:')) continue;
@@ -1371,9 +1460,12 @@ function leerDLG(txt) {
   if (act && act.lineas.some((l) => /^(ATOM|HETATM)/.test(l))) poses.push(act);
   const buenas = poses.filter((p) => p.lineas.some((l) => /^(ATOM|HETATM)/.test(l)));
 
-  // RMSD TABLE → rank | sub-rank | run | binding energy | cluster RMSD | reference RMSD
+  // De la RMSD TABLE sólo se usa la columna "Reference RMSD" (el RMSD contra el cristal,
+  // que AutoDock calcula por corrida y corrigiendo por simetría). El AGRUPAMIENTO no sale
+  // de ahí: el .dlg viene a 2,0 Å, que es la tolerancia por omisión de AutoDock y es
+  // gruesa —junta poses distinguibles e infla la población—, así que se reagrupa acá a
+  // RMSTOL, igual que el ranking del proyecto.
   const porRun = new Map(buenas.map((p) => [p.run, p]));
-  const cl = new Map();
   let enTabla = false;
   for (const l of lineas) {
     if (l.includes('RMSD TABLE')) { enTabla = true; continue; }
@@ -1381,20 +1473,25 @@ function leerDLG(txt) {
     // ojo: AutoDock escribe las energías positivas con signo "+" ("+0.42"), hay que aceptarlo
     const m = l.match(/^\s*(\d+)\s+(\d+)\s+(\d+)\s+([-+]?\d+\.\d+)\s+([-+]?\d+\.\d+)\s+([-+]?\d+\.\d+)/);
     if (!m) continue;
-    const rank = +m[1], run = +m[3], dg = +m[4];
-    const p = porRun.get(run);
-    if (p) { p.cluster = rank; p.sub = +m[2]; p.rmsdCluster = +m[5]; p.rmsdRef = +m[6]; if (p.dg === null) p.dg = dg; }
-    if (!cl.has(rank)) cl.set(rank, { rank, runs: [], dgs: [] });
-    cl.get(rank).runs.push(run); cl.get(rank).dgs.push(dg);
+    const p = porRun.get(+m[3]);
+    if (p) { p.rmsdRef = +m[6]; if (p.dg === null) p.dg = +m[4]; }
   }
-  const clusters = [...cl.values()].sort((a, b) => a.rank - b.rank).map((c) => ({
-    rank: c.rank, runs: c.runs, n: c.runs.length,
-    mejor: Math.min(...c.dgs),
-    media: c.dgs.reduce((s, x) => s + x, 0) / c.dgs.length,
-  }));
-  // presentar las poses en el orden del ranking de AutoDock, no en el de las corridas
-  if (clusters.length) buenas.sort((a, b) => (a.cluster - b.cluster) || (a.sub - b.sub));
+  const clusters = agrupar(buenas, RMSTOL);
+  buenas.sort((a, b) => (a.cluster - b.cluster) || (a.sub - b.sub));
   return { poses: buenas, clusters, meta };
+}
+
+// El ranking de AutoDock ordena los clusters por energía sola, así que el cluster 1 puede
+// ser una pose que apareció una sola vez. El criterio del proyecto pesa también la
+// población: entre los clusters con al menos FRAC_MIN de las corridas, el de menor ΔG.
+const FRAC_MIN = 0.10;
+function clusterElegido(c) {
+  if (!c || !c.clusters.length) return null;
+  const total = c.poses.length;
+  const pasan = c.clusters.filter((x) => x.n / total >= FRAC_MIN);
+  const lista = pasan.length ? pasan : c.clusters;
+  const elegido = lista.reduce((m, x) => (x.mejor < m.mejor ? x : m), lista[0]);
+  return { ...elegido, sinPoblacion: !pasan.length, distintoDelRank1: elegido.rank !== c.clusters[0].rank };
 }
 
 // a qué posición de la lista de poses corresponde cada miembro de cada cluster
@@ -1751,6 +1848,12 @@ function pintarComplejo() {
         .some((d, k) => semi[k] - Math.abs(d) < 1)).length;
   }
 
+  // el ligando cristalográfico, que el propio .dlg trae cuando se corrió con --xraylfile
+  if (meta.xrayLineas && verCristal) {
+    visorC.addModel(aPDB(meta.xrayLineas.join('\n'), true), 'pdb');
+    visorC.setStyle({ model: 2 + extras.length }, { stick: { radius: 0.08, color: '#2f7fa8' } });
+  }
+
   if (verSup)
     visorC.addSurface($3Dmol.SurfaceType.VDW, { opacity: 0.55, color: '#d8d5cc' }, { model: 0, resi: residuos });
 
@@ -1789,7 +1892,9 @@ function pintarComplejo() {
     const resto = conj.clusters.length - COLOR_CLUSTER.length;
     if (resto > 0) ley += `<span class="it"><span class="mu" style="border-color:#8c8578"></span>+${resto} cluster${resto > 1 ? 's' : ''} más, en gris</span>`;
   }
-  else if (modoVista === 'cluster' && extras.length)
+  if (meta.xrayLineas && verCristal)
+    ley += `<span class="it"><span class="mu" style="border-color:#2f7fa8"></span>cristal (${meta.xray})</span>`;
+  if (modoVista === 'cluster' && extras.length)
     ley += `<span class="it"><span class="mu" style="border-color:#9a9285"></span>${extras.length} miembro${extras.length > 1 ? 's' : ''} del cluster</span>`;
   $('leyenda').innerHTML = ley;
   const etq = conj && conj.tipo === 'dlg'
@@ -1799,7 +1904,9 @@ function pintarComplejo() {
   $('pieComplejo').textContent = `${conj && conjuntos.length > 1 ? conj.nombre + ' · ' : ''}${etq} · ` +
     `${lig.filter((a) => a.el !== 'H').length} átomos pesados · ${interActual.length} interacciones · ` +
     `${((performance.now() - t0) / 1000).toFixed(1)} s` +
-    (enPared ? ` · ${enPared} átomo${enPared > 1 ? 's' : ''} a menos de 1 Å de la pared de la caja` : '');
+    (enPared ? ` · ${enPared} átomo${enPared > 1 ? 's' : ''} a menos de 1 Å de la pared de la caja` : '') +
+    (meta.xray && pose.rmsdRef !== undefined
+      ? ` · RMSD al cristal ${pose.rmsdRef.toFixed(2)} Å${pose.rmsdRef < 2 ? ' ✓' : ''}` : '');
   pintarTablaInter();
   pintarTablaClusters();
   poseRenderizada = i;
@@ -1826,14 +1933,127 @@ function csvInter() {
     [x.tipo, x.residuo, x.atRes, x.atLig, x.d.toFixed(3), x.ang === null ? '' : x.ang.toFixed(1), x.rol].join(','))].join('\n');
 }
 
+// ─────────────────────────── mapa de contactos ───────────────────────────
+// Una fila por ligando cargado, una columna por residuo, y en cada celda la
+// FRECUENCIA del contacto dentro del cluster elegido: en cuántas de sus poses
+// ese residuo aparece con al menos una interacción. Un contacto que sale en
+// 45 de 50 poses no es lo mismo que uno que salió una vez, y la tabla de
+// "Interacciones" —que mira una sola pose— no puede distinguirlos.
+const TOPE_POSES = 30;            // techo por ligando, para que no se cuelgue
+let mapaDatos = null;
+
+const numRes = (et) => { const m = /(\d+)/.exec(et); return m ? +m[1] : 0; };
+
+// el mapa es caro, así que no se recalcula solo: si cambian los ligandos o el
+// receptor se descarta, para no dejar a la vista un mapa de otros datos
+function invalidarMapa(motivo) {
+  if (!mapaDatos) return;
+  mapaDatos = null;
+  $('mapaContactos').innerHTML = `<p class="vacio">${motivo} Volvé a apretar «Calcular el mapa».</p>`;
+  $('copiarMapa').disabled = $('bajarMapa').disabled = true;
+}
+
+async function calcularMapa(usarCluster) {
+  if (!receptorTxt) { $('mapaContactos').innerHTML = '<p class="vacio">Falta el receptor: cargalo arriba.</p>'; return null; }
+  if (!conjuntos.length) { $('mapaContactos').innerHTML = '<p class="vacio">No hay ningún ligando cargado.</p>'; return null; }
+  const rec = leerPDBQT(receptorTxt);        // se parsea UNA vez para todo el mapa
+  const filas = [], cols = new Map();
+  let recortado = false;
+  for (let k = 0; k < conjuntos.length; k++) {
+    const c = conjuntos[k];
+    $('pieMapa').textContent = `calculando ${c.nombre} (${k + 1}/${conjuntos.length})…`;
+    await new Promise((r) => setTimeout(r));   // deja respirar a la UI
+    const el = clusterElegido(c);
+    let idx = el && el.idx && el.idx.length ? el.idx : c.poses.map((_, i) => i);
+    if (!usarCluster) idx = idx.slice(0, 1);
+    if (idx.length > TOPE_POSES) { idx = idx.slice(0, TOPE_POSES); recortado = true; }
+    const cuenta = new Map();                  // residuo -> {n, tipos:Map}
+    for (const i of idx) {
+      const lig = leerPDBQT(c.poses[i].lineas.join('\n'));
+      const vistos = new Map();
+      for (const x of analizar(rec, lig)) {
+        if (!vistos.has(x.residuo)) vistos.set(x.residuo, new Set());
+        vistos.get(x.residuo).add(x.tipo);
+      }
+      for (const [res, tipos] of vistos) {
+        if (!cuenta.has(res)) cuenta.set(res, { n: 0, tipos: new Map() });
+        const e = cuenta.get(res); e.n++;
+        for (const t of tipos) e.tipos.set(t, (e.tipos.get(t) || 0) + 1);
+        cols.set(res, (cols.get(res) || 0) + 1);
+      }
+    }
+    filas.push({ nombre: c.nombre, nPoses: idx.length, cuenta,
+      cluster: el ? el.rank : null, dg: el ? el.mejor : null });
+  }
+  $('pieMapa').textContent = '';
+  const columnas = [...cols.keys()].sort((a, b) => numRes(a) - numRes(b));
+  return { filas, columnas, usarCluster, recortado };
+}
+
+function pintarMapa() {
+  const d = mapaDatos;
+  if (!d) return;
+  if (!d.columnas.length) {
+    $('mapaContactos').innerHTML = '<p class="vacio">Ningún ligando hace contacto con el receptor.</p>';
+    return;
+  }
+  const tinta = '#1d5f80';                 // --celeste3; la rampa va de papel a esta tinta
+  const celda = (f, res) => {
+    const e = f.cuenta.get(res);
+    if (!e) return '<td></td>';
+    const fr = e.n / f.nPoses;
+    const tipos = [...e.tipos.entries()].map(([t, n]) => `${t} (${n})`).join(', ');
+    const tit = `${f.nombre} · ${res}\n${e.n} de ${f.nPoses} poses (${Math.round(fr * 100)} %)\n${tipos}`;
+    // raíz para que las frecuencias bajas no desaparezcan contra el papel
+    const a = Math.pow(fr, .7);
+    return `<td class="c" style="background:color-mix(in oklab, ${tinta} ${Math.round(a * 100)}%, var(--lienzo))"`
+         + ` title="${tit.replace(/"/g, '&quot;')}"></td>`;
+  };
+  // Se destacan los residuos que tocan TODOS los ligandos cargados: eso sale del
+  // propio dato. (Marcar "los catalíticos" exigiría saber de qué enzima se trata,
+  // y acá el receptor lo pone el usuario.)
+  const comunes = new Set(d.columnas.filter((r) => d.filas.every((f) => f.cuenta.has(r))));
+  let h = '<div class="desborde"><table><thead><tr><th></th>' +
+    d.columnas.map((r) => `<th class="${d.filas.length > 1 && comunes.has(r) ? 'cat' : ''}"><span>${r}</span></th>`).join('') +
+    '</tr></thead><tbody>';
+  for (const f of d.filas) {
+    h += `<tr><th>${f.nombre}` +
+      (f.cluster ? ` <span class="n">· cl ${f.cluster} · ${f.nPoses} pose${f.nPoses > 1 ? 's' : ''}</span>` : '') +
+      '</th>' + d.columnas.map((r) => celda(f, r)).join('') + '</tr>';
+  }
+  h += '</tbody></table></div>';
+  h += '<div class="escala"><span>contacto en</span>' +
+    [0, .25, .5, .75, 1].map((v) =>
+      `<i style="background:color-mix(in oklab, ${tinta} ${Math.round(Math.pow(v, .7) * 100)}%, var(--lienzo))"></i>`).join('') +
+    '<span>0 → 100 % de las poses</span>' +
+    (d.filas.length > 1 && comunes.size ? `<span>· en rojo, los ${comunes.size} residuos que tocan todos los ligandos</span>` : '') +
+    (d.recortado ? `<span>· se usaron hasta ${TOPE_POSES} poses por ligando</span>` : '') +
+    (d.usarCluster ? '' : '<span>· sólo la mejor pose de cada cluster</span>') +
+    '</div>';
+  $('mapaContactos').innerHTML = h;
+  $('copiarMapa').disabled = $('bajarMapa').disabled = false;
+}
+
+function csvMapa() {
+  const d = mapaDatos; if (!d) return '';
+  const cab = ['ligando', 'cluster', 'poses_usadas', ...d.columnas].join(',');
+  return [cab, ...d.filas.map((f) => [f.nombre, f.cluster ?? '', f.nPoses,
+    ...d.columnas.map((r) => { const e = f.cuenta.get(r); return e ? (e.n / f.nPoses).toFixed(3) : '0'; })].join(','))].join('\n');
+}
+
 function pintarSelPoses() {
   const c = conjuntos[conjActual]; if (!c) return;
   posesC = c.poses;
+  $('vCristal').hidden = !(c.meta && c.meta.xrayLineas);
+  const eleg = clusterElegido(c);
   $('poseSel').innerHTML = c.poses.map((p, i) => {
     const dg = p.dg !== null && p.dg !== undefined ? ` — ${p.dg.toFixed(2)} kcal/mol` : '';
     const cl = p.cluster ? ` · cluster ${p.cluster}` : '';
-    return `<option value="${i}">${c.tipo === 'dlg' ? `Corrida ${p.run}` : `Pose ${i + 1}`}${dg}${cl}</option>`;
+    const rm = c.meta && c.meta.xray && p.rmsdRef !== undefined ? ` · cristal ${p.rmsdRef.toFixed(2)} Å` : '';
+    return `<option value="${i}">${c.tipo === 'dlg' ? `Corrida ${p.run}` : `Pose ${i + 1}`}${dg}${cl}${rm}</option>`;
   }).join('');
+  // la pose por defecto es la del cluster que elige el criterio, no la primera del ranking
+  if (eleg && eleg.idx && eleg.idx.length) $('poseSel').value = eleg.idx[0];
 }
 
 function pintarTablaClusters() {
@@ -1846,26 +2066,63 @@ function pintarTablaClusters() {
   const total = c.poses.length;
   const sel = c.poses[+$('poseSel').value];
   const max = Math.max(...c.clusters.map((x) => x.n));
+  const conCristal = !!(c.meta && c.meta.xray);
+  const eleg = clusterElegido(c);
   caja.innerHTML = '<div class="desborde"><table><thead><tr>' +
-    '<th>Cluster</th><th>ΔG mejor</th><th>ΔG medio</th><th>N</th><th>% de corridas</th><th>Población</th>' +
+    '<th>Cluster</th><th>ΔG mejor</th><th>ΔG medio</th><th>N</th><th>% de corridas</th>' +
+    (conCristal ? '<th>RMSD cristal</th>' : '') + '<th>Población</th>' +
     '</tr></thead><tbody>' + c.clusters.map((x, k) => {
       const pct = (100 * x.n / total);
       const color = colorCluster(k);
       const act = sel && sel.cluster === x.rank;
+      const esEleg = eleg && eleg.rank === x.rank;
       return `<tr class="filaCluster${act ? ' activa' : ''}" data-rank="${x.rank}" style="cursor:pointer${act ? ';font-weight:700' : ''}">` +
-        `<td><span class="tipo"><i style="background:${color}"></i>${x.rank}</span></td>` +
+        `<td><span class="tipo"><i style="background:${color}"></i>${x.rank}` +
+        `${esEleg ? ' <b title="El que elige el criterio: población mínima y, entre esos, menor ΔG">◀ elegido</b>' : ''}</span></td>` +
         `<td>${x.mejor.toFixed(2)}</td><td>${x.media.toFixed(2)}</td><td>${x.n}</td>` +
         `<td>${pct.toFixed(0)} %</td>` +
+        (conCristal ? (() => {
+          // la de la pose de MENOR ENERGÍA, que es la que uno reportaría de este cluster.
+          // Entre paréntesis, la mejor de todo el cluster: responde otra pregunta —si el
+          // cluster contiene una pose buena— y siempre es igual o más optimista.
+          const r = c.poses[x.idx[0]] ? c.poses[x.idx[0]].rmsdRef : undefined;
+          const mins = x.idx.map((j) => c.poses[j].rmsdRef).filter((v) => v !== undefined);
+          const mn = mins.length ? Math.min(...mins) : undefined;
+          if (r === undefined) return '<td>—</td>';
+          return `<td>${r.toFixed(2)}${r < 2 ? ' ✓' : ''}` +
+            `${mn !== undefined && r - mn > 0.05 ? ` <span style="opacity:.6">(mín ${mn.toFixed(2)})</span>` : ''}</td>`;
+        })() : '') +
         `<td><span style="display:inline-block;height:9px;width:${Math.max(2, 100 * x.n / max)}px;background:${color};vertical-align:middle"></span></td></tr>`;
     }).join('') + '</tbody></table></div>' +
     `<p class="nota" style="margin:8px 0 0">${c.clusters.length} cluster${c.clusters.length > 1 ? 's' : ''} sobre ${total} corridas. ` +
     `El cluster 1 se queda con el ${(100 * c.clusters[0].n / total).toFixed(0)} % de ellas: cuanto más alto, más convergió la búsqueda. ` +
     'Un ΔG bueno con población baja es una pose que apareció una vez.</p>' +
-    (c.meta && c.meta.rmstol
-      ? `<p class="nota" style="margin:4px 0 0">Agrupados por AutoDock con tolerancia de <b>${c.meta.rmstol.toFixed(1)} Å</b>` +
+    (eleg
+      ? `<p class="nota" style="margin:4px 0 0"><b>Elegido: cluster ${eleg.rank}</b> ` +
+        `(ΔG ${eleg.mejor.toFixed(2)}, ${(100 * eleg.n / total).toFixed(0)} % de las corridas). ` +
+        'El criterio no es el ΔG solo: primero se piden al menos <b>10 % de las corridas</b> y, entre los ' +
+        'clusters que lo cumplen, se toma el de menor ΔG. ' +
+        (eleg.sinPoblacion
+          ? '<b>Ningún cluster llega al 10 %</b>, así que esto es sólo el de menor ΔG: la búsqueda no convergió.'
+          : eleg.distintoDelRank1
+            ? `No es el cluster 1: ese gana por energía pero se queda con el ${(100 * c.clusters[0].n / total).toFixed(0)} % de las corridas.`
+            : 'Coincide con el cluster 1 de AutoDock, que ordena por energía sola.') + '</p>'
+      : '') +
+    (conCristal
+      ? `<p class="nota" style="margin:4px 0 0">RMSD contra <b>${c.meta.xray}</b>, el ligando cristalográfico: ` +
+        'es la columna <i>Reference RMSD</i> del propio <code>.dlg</code>, que AutoDock calcula ' +
+        '<b>corrigiendo por simetría</b> (recalcularla átomo contra átomo infla el valor en ligandos con ' +
+        'anillos simétricos). La columna es la de la pose de <b>menor ΔG</b> del cluster, que es la que ' +
+        'uno reportaría; entre paréntesis, cuando difiere, la mejor de todo el cluster, que responde otra ' +
+        'pregunta y siempre es más optimista. Un redocking de control acepta con <b>≤ 2 Å</b>.</p>'
+      : '') +
+    (c.tipo === 'dlg'
+      ? `<p class="nota" style="margin:4px 0 0">Reagrupado a <b>${RMSTOL.toFixed(1)} Å</b>` +
         `${c.meta.receptor ? `, contra <b>${c.meta.receptor}</b>` : ''}. ` +
-        'Reagrupar con otra tolerancia da otro número de clusters: si comparás con una tabla hecha aparte, ' +
-        'fijate que sea la misma.</p>'
+        `El propio <code>.dlg</code> trae un agrupamiento a ${c.meta.rmstol ? c.meta.rmstol.toFixed(1) : '2,0'} Å, ` +
+        'que es el valor por omisión de AutoDock y es grueso: junta poses distinguibles e infla la población ' +
+        'del primer cluster. Acá se reagrupa con RMSD de átomos pesados, igual que el ranking del proyecto, ' +
+        'para que los dos lados hablen del mismo número.</p>'
       : '');
   for (const tr of caja.querySelectorAll('.filaCluster')) tr.addEventListener('click', () => {
     const x = c.clusters.find((y) => y.rank === +tr.dataset.rank);
@@ -1891,6 +2148,7 @@ function cargarPoses(txt, origen) {
   const c = leerConjunto(txt, origen);
   if (!c.poses.length) { cEstado('Ese archivo no tiene poses legibles.', true); return; }
   conjuntos = [c]; conjActual = 0;
+  invalidarMapa('Cambiaron los ligandos cargados.');
   pintarSelLigandos(); pintarSelPoses(); pintarTablaClusters();
   claveRender = ''; poseRenderizada = -1;
   cEstado(`${c.poses.length} pose${c.poses.length > 1 ? 's' : ''} ${origen}` +
@@ -1905,6 +2163,7 @@ async function cargarArchivos(files) {
   }
   if (!nuevos.length) { cEstado('Ninguno de esos archivos tiene poses legibles.', true); return; }
   conjuntos = nuevos; conjActual = 0;
+  invalidarMapa('Cambiaron los ligandos cargados.');
   pintarSelLigandos(); pintarSelPoses(); pintarTablaClusters();
   claveRender = ''; poseRenderizada = -1;
   const saltados = files.length - nuevos.length;
@@ -1957,6 +2216,10 @@ $('vCaja').addEventListener('click', () => {
   verCaja = !verCaja; $('vCaja').classList.toggle('activa', verCaja);
   if (posesC.length) { claveRender = ''; repintar(); }
 });
+$('vCristal').addEventListener('click', () => {
+  verCristal = !verCristal; $('vCristal').classList.toggle('activa', verCristal);
+  if (posesC.length) { claveRender = ''; repintar(); }
+});
 $('vCinta').addEventListener('click', () => {
   verCinta = !verCinta; $('vCinta').classList.toggle('activa', verCinta);
   if (posesC.length) pintarComplejo();
@@ -1974,6 +2237,7 @@ $('receptorArchivoC').addEventListener('change', async (e) => {
   $('receptorEstadoC').textContent = `Receptor "${f.name}": ${n} átomos. Las interacciones se miden contra este archivo.`;
   if ($('receptorEstado')) $('receptorEstado').textContent = `Receptor "${f.name}": ${receptorTxt.split('\n').length} líneas.`;
   claveRender = '';
+  invalidarMapa('Cambió el receptor.');
   if (posesC.length) repintar();
 });
 $('bajarClusters').addEventListener('click', () => {
@@ -2007,8 +2271,36 @@ $('bajarInter').addEventListener('click', () => {
   a.href = URL.createObjectURL(new Blob([csvInter()], { type: 'text/csv' }));
   a.download = 'interacciones.csv'; a.click(); URL.revokeObjectURL(a.href);
 });
+$('mapaCluster').addEventListener('click', (e) => {
+  e.currentTarget.classList.toggle('activa');
+  invalidarMapa('Cambió el criterio.');
+});
+$('calcMapa').addEventListener('click', async () => {
+  const b = $('calcMapa'); b.disabled = true;
+  try {
+    mapaDatos = await calcularMapa($('mapaCluster').classList.contains('activa'));
+    if (mapaDatos) { pintarMapa(); cEstado(`Mapa de contactos: ${mapaDatos.filas.length} ligando(s), ${mapaDatos.columnas.length} residuos.`); }
+  } catch (err) {
+    $('mapaContactos').innerHTML = '<p class="vacio">No se pudo calcular el mapa.</p>';
+    cEstado('Falló el mapa de contactos: ' + err.message, true);
+  } finally { b.disabled = false; $('pieMapa').textContent = ''; }
+});
+$('copiarMapa').addEventListener('click', async () => {
+  if (!mapaDatos) return;
+  await navigator.clipboard.writeText(csvMapa()); cEstado('CSV del mapa copiado.');
+});
+$('bajarMapa').addEventListener('click', () => {
+  if (!mapaDatos) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csvMapa()], { type: 'text/csv' }));
+  a.download = 'mapa_contactos.csv'; a.click(); URL.revokeObjectURL(a.href);
+});
 window.__complejo = () => ({   // para inspección y pruebas
   poses: posesC.length, inter: interActual, modo: modoVista,
+  receptor: { nombre: receptorNombre, atomos: receptorTxt ? leerPDBQT(receptorTxt).length : 0 },
+  mapa: mapaDatos && { filas: mapaDatos.filas.map((f) => ({ nombre: f.nombre, nPoses: f.nPoses,
+    cluster: f.cluster, res: [...f.cuenta.entries()].map(([r, e]) => [r, e.n]) })),
+    columnas: mapaDatos.columnas, usarCluster: mapaDatos.usarCluster },
   conjuntos: conjuntos.map((c) => ({ nombre: c.nombre, tipo: c.tipo, poses: c.poses.length, clusters: c.clusters.length })),
   cual: conjActual, clusters: (conjuntos[conjActual] || {}).clusters || [],
   poseSel: +$('poseSel').value, clusterDeLaPose: (posesC[+$('poseSel').value] || {}).cluster,
