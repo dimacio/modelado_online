@@ -130,6 +130,25 @@ th{font:700 .56rem var(--pix);text-transform:uppercase;color:var(--tenue);backgr
 .vistas{display:flex;gap:5px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
 .vistas button.activa{background:var(--celeste);color:var(--tinta)}
 .pie3d{margin-left:auto;font:.72rem var(--mono);color:var(--tenue)}
+
+/* Mapa de contactos: matriz ligando x residuo. Misma tinta que el resto; la
+   intensidad es la frecuencia del contacto dentro del cluster. */
+#mapaContactos table{border-collapse:separate;border-spacing:2px;font:.72rem var(--mono)}
+#mapaContactos th{font-weight:500;color:var(--tenue);padding:0}
+#mapaContactos thead th{height:74px;vertical-align:bottom;width:22px}
+#mapaContactos thead th span{writing-mode:vertical-rl;transform:rotate(180deg);
+  display:inline-block;white-space:nowrap;padding-bottom:3px}
+#mapaContactos thead th.cat span{color:var(--alerta);font-weight:600}
+#mapaContactos tbody th{text-align:left;padding-right:9px;white-space:nowrap;
+  position:sticky;left:0;background:var(--panel);color:var(--tinta);z-index:1}
+#mapaContactos tbody th .n{color:var(--tenue)}
+#mapaContactos td{width:22px;height:22px;padding:0;border:1px solid var(--raya);
+  background:var(--lienzo)}
+#mapaContactos td.c{border-color:transparent;cursor:help}
+#mapaContactos td.c:hover{outline:2px solid var(--tinta);outline-offset:-1px}
+#mapaContactos .escala{display:flex;align-items:center;gap:7px;margin-top:11px;
+  font:.72rem var(--mono);color:var(--tenue);flex-wrap:wrap}
+#mapaContactos .escala i{width:22px;height:11px;display:block;border:1px solid var(--raya)}
 #caja3d{position:relative}
 #visor3d{width:100%;height:100%;cursor:grab}
 .taller{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;padding:9px 11px;
@@ -400,6 +419,23 @@ a:focus-visible{outline:2px solid var(--celeste);outline-offset:2px}
         <div class="acciones" style="margin-top:12px">
           <button id="copiarInter">Copiar como CSV</button>
           <button id="bajarInter">Descargar CSV</button>
+        </div>
+      </div>
+      <div class="tarjeta">
+        <h2>Mapa de contactos</h2>
+        <p class="ayuda" style="margin-top:0">Qué residuos toca <em>cada ligando cargado</em>, uno al lado del otro.
+          La tabla de arriba mira una pose; ésta compara todos los ligandos a la vez y cuenta en
+          cuántas poses del cluster aparece cada contacto, que es lo que distingue un contacto
+          sostenido de uno que salió una sola vez.</p>
+        <div class="vistas" style="margin:0 0 12px">
+          <button id="calcMapa" class="primario">Calcular el mapa</button>
+          <button id="mapaCluster" class="activa">Todo el cluster</button>
+          <span class="pie3d" id="pieMapa"></span>
+        </div>
+        <div id="mapaContactos"><p class="vacio">Cargá uno o más <code>.dlg</code> y el receptor, y apretá «Calcular el mapa».</p></div>
+        <div class="acciones" style="margin-top:12px">
+          <button id="copiarMapa" disabled>Copiar como CSV</button>
+          <button id="bajarMapa" disabled>Descargar CSV</button>
         </div>
       </div>
       <div class="tarjeta">
@@ -1897,6 +1933,114 @@ function csvInter() {
     [x.tipo, x.residuo, x.atRes, x.atLig, x.d.toFixed(3), x.ang === null ? '' : x.ang.toFixed(1), x.rol].join(','))].join('\n');
 }
 
+// ─────────────────────────── mapa de contactos ───────────────────────────
+// Una fila por ligando cargado, una columna por residuo, y en cada celda la
+// FRECUENCIA del contacto dentro del cluster elegido: en cuántas de sus poses
+// ese residuo aparece con al menos una interacción. Un contacto que sale en
+// 45 de 50 poses no es lo mismo que uno que salió una vez, y la tabla de
+// "Interacciones" —que mira una sola pose— no puede distinguirlos.
+const TOPE_POSES = 30;            // techo por ligando, para que no se cuelgue
+let mapaDatos = null;
+
+const numRes = (et) => { const m = /(\d+)/.exec(et); return m ? +m[1] : 0; };
+
+// el mapa es caro, así que no se recalcula solo: si cambian los ligandos o el
+// receptor se descarta, para no dejar a la vista un mapa de otros datos
+function invalidarMapa(motivo) {
+  if (!mapaDatos) return;
+  mapaDatos = null;
+  $('mapaContactos').innerHTML = `<p class="vacio">${motivo} Volvé a apretar «Calcular el mapa».</p>`;
+  $('copiarMapa').disabled = $('bajarMapa').disabled = true;
+}
+
+async function calcularMapa(usarCluster) {
+  if (!receptorTxt) { $('mapaContactos').innerHTML = '<p class="vacio">Falta el receptor: cargalo arriba.</p>'; return null; }
+  if (!conjuntos.length) { $('mapaContactos').innerHTML = '<p class="vacio">No hay ningún ligando cargado.</p>'; return null; }
+  const rec = leerPDBQT(receptorTxt);        // se parsea UNA vez para todo el mapa
+  const filas = [], cols = new Map();
+  let recortado = false;
+  for (let k = 0; k < conjuntos.length; k++) {
+    const c = conjuntos[k];
+    $('pieMapa').textContent = `calculando ${c.nombre} (${k + 1}/${conjuntos.length})…`;
+    await new Promise((r) => setTimeout(r));   // deja respirar a la UI
+    const el = clusterElegido(c);
+    let idx = el && el.idx && el.idx.length ? el.idx : c.poses.map((_, i) => i);
+    if (!usarCluster) idx = idx.slice(0, 1);
+    if (idx.length > TOPE_POSES) { idx = idx.slice(0, TOPE_POSES); recortado = true; }
+    const cuenta = new Map();                  // residuo -> {n, tipos:Map}
+    for (const i of idx) {
+      const lig = leerPDBQT(c.poses[i].lineas.join('\n'));
+      const vistos = new Map();
+      for (const x of analizar(rec, lig)) {
+        if (!vistos.has(x.residuo)) vistos.set(x.residuo, new Set());
+        vistos.get(x.residuo).add(x.tipo);
+      }
+      for (const [res, tipos] of vistos) {
+        if (!cuenta.has(res)) cuenta.set(res, { n: 0, tipos: new Map() });
+        const e = cuenta.get(res); e.n++;
+        for (const t of tipos) e.tipos.set(t, (e.tipos.get(t) || 0) + 1);
+        cols.set(res, (cols.get(res) || 0) + 1);
+      }
+    }
+    filas.push({ nombre: c.nombre, nPoses: idx.length, cuenta,
+      cluster: el ? el.rank : null, dg: el ? el.mejor : null });
+  }
+  $('pieMapa').textContent = '';
+  const columnas = [...cols.keys()].sort((a, b) => numRes(a) - numRes(b));
+  return { filas, columnas, usarCluster, recortado };
+}
+
+function pintarMapa() {
+  const d = mapaDatos;
+  if (!d) return;
+  if (!d.columnas.length) {
+    $('mapaContactos').innerHTML = '<p class="vacio">Ningún ligando hace contacto con el receptor.</p>';
+    return;
+  }
+  const tinta = '#1d5f80';                 // --celeste3; la rampa va de papel a esta tinta
+  const celda = (f, res) => {
+    const e = f.cuenta.get(res);
+    if (!e) return '<td></td>';
+    const fr = e.n / f.nPoses;
+    const tipos = [...e.tipos.entries()].map(([t, n]) => `${t} (${n})`).join(', ');
+    const tit = `${f.nombre} · ${res}\n${e.n} de ${f.nPoses} poses (${Math.round(fr * 100)} %)\n${tipos}`;
+    // raíz para que las frecuencias bajas no desaparezcan contra el papel
+    const a = Math.pow(fr, .7);
+    return `<td class="c" style="background:color-mix(in oklab, ${tinta} ${Math.round(a * 100)}%, var(--lienzo))"`
+         + ` title="${tit.replace(/"/g, '&quot;')}"></td>`;
+  };
+  // Se destacan los residuos que tocan TODOS los ligandos cargados: eso sale del
+  // propio dato. (Marcar "los catalíticos" exigiría saber de qué enzima se trata,
+  // y acá el receptor lo pone el usuario.)
+  const comunes = new Set(d.columnas.filter((r) => d.filas.every((f) => f.cuenta.has(r))));
+  let h = '<div class="desborde"><table><thead><tr><th></th>' +
+    d.columnas.map((r) => `<th class="${d.filas.length > 1 && comunes.has(r) ? 'cat' : ''}"><span>${r}</span></th>`).join('') +
+    '</tr></thead><tbody>';
+  for (const f of d.filas) {
+    h += `<tr><th>${f.nombre}` +
+      (f.cluster ? ` <span class="n">· cl ${f.cluster} · ${f.nPoses} pose${f.nPoses > 1 ? 's' : ''}</span>` : '') +
+      '</th>' + d.columnas.map((r) => celda(f, r)).join('') + '</tr>';
+  }
+  h += '</tbody></table></div>';
+  h += '<div class="escala"><span>contacto en</span>' +
+    [0, .25, .5, .75, 1].map((v) =>
+      `<i style="background:color-mix(in oklab, ${tinta} ${Math.round(Math.pow(v, .7) * 100)}%, var(--lienzo))"></i>`).join('') +
+    '<span>0 → 100 % de las poses</span>' +
+    (d.filas.length > 1 && comunes.size ? `<span>· en rojo, los ${comunes.size} residuos que tocan todos los ligandos</span>` : '') +
+    (d.recortado ? `<span>· se usaron hasta ${TOPE_POSES} poses por ligando</span>` : '') +
+    (d.usarCluster ? '' : '<span>· sólo la mejor pose de cada cluster</span>') +
+    '</div>';
+  $('mapaContactos').innerHTML = h;
+  $('copiarMapa').disabled = $('bajarMapa').disabled = false;
+}
+
+function csvMapa() {
+  const d = mapaDatos; if (!d) return '';
+  const cab = ['ligando', 'cluster', 'poses_usadas', ...d.columnas].join(',');
+  return [cab, ...d.filas.map((f) => [f.nombre, f.cluster ?? '', f.nPoses,
+    ...d.columnas.map((r) => { const e = f.cuenta.get(r); return e ? (e.n / f.nPoses).toFixed(3) : '0'; })].join(','))].join('\n');
+}
+
 function pintarSelPoses() {
   const c = conjuntos[conjActual]; if (!c) return;
   posesC = c.poses;
@@ -2004,6 +2148,7 @@ function cargarPoses(txt, origen) {
   const c = leerConjunto(txt, origen);
   if (!c.poses.length) { cEstado('Ese archivo no tiene poses legibles.', true); return; }
   conjuntos = [c]; conjActual = 0;
+  invalidarMapa('Cambiaron los ligandos cargados.');
   pintarSelLigandos(); pintarSelPoses(); pintarTablaClusters();
   claveRender = ''; poseRenderizada = -1;
   cEstado(`${c.poses.length} pose${c.poses.length > 1 ? 's' : ''} ${origen}` +
@@ -2018,6 +2163,7 @@ async function cargarArchivos(files) {
   }
   if (!nuevos.length) { cEstado('Ninguno de esos archivos tiene poses legibles.', true); return; }
   conjuntos = nuevos; conjActual = 0;
+  invalidarMapa('Cambiaron los ligandos cargados.');
   pintarSelLigandos(); pintarSelPoses(); pintarTablaClusters();
   claveRender = ''; poseRenderizada = -1;
   const saltados = files.length - nuevos.length;
@@ -2091,6 +2237,7 @@ $('receptorArchivoC').addEventListener('change', async (e) => {
   $('receptorEstadoC').textContent = `Receptor "${f.name}": ${n} átomos. Las interacciones se miden contra este archivo.`;
   if ($('receptorEstado')) $('receptorEstado').textContent = `Receptor "${f.name}": ${receptorTxt.split('\n').length} líneas.`;
   claveRender = '';
+  invalidarMapa('Cambió el receptor.');
   if (posesC.length) repintar();
 });
 $('bajarClusters').addEventListener('click', () => {
@@ -2124,8 +2271,36 @@ $('bajarInter').addEventListener('click', () => {
   a.href = URL.createObjectURL(new Blob([csvInter()], { type: 'text/csv' }));
   a.download = 'interacciones.csv'; a.click(); URL.revokeObjectURL(a.href);
 });
+$('mapaCluster').addEventListener('click', (e) => {
+  e.currentTarget.classList.toggle('activa');
+  invalidarMapa('Cambió el criterio.');
+});
+$('calcMapa').addEventListener('click', async () => {
+  const b = $('calcMapa'); b.disabled = true;
+  try {
+    mapaDatos = await calcularMapa($('mapaCluster').classList.contains('activa'));
+    if (mapaDatos) { pintarMapa(); cEstado(`Mapa de contactos: ${mapaDatos.filas.length} ligando(s), ${mapaDatos.columnas.length} residuos.`); }
+  } catch (err) {
+    $('mapaContactos').innerHTML = '<p class="vacio">No se pudo calcular el mapa.</p>';
+    cEstado('Falló el mapa de contactos: ' + err.message, true);
+  } finally { b.disabled = false; $('pieMapa').textContent = ''; }
+});
+$('copiarMapa').addEventListener('click', async () => {
+  if (!mapaDatos) return;
+  await navigator.clipboard.writeText(csvMapa()); cEstado('CSV del mapa copiado.');
+});
+$('bajarMapa').addEventListener('click', () => {
+  if (!mapaDatos) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csvMapa()], { type: 'text/csv' }));
+  a.download = 'mapa_contactos.csv'; a.click(); URL.revokeObjectURL(a.href);
+});
 window.__complejo = () => ({   // para inspección y pruebas
   poses: posesC.length, inter: interActual, modo: modoVista,
+  receptor: { nombre: receptorNombre, atomos: receptorTxt ? leerPDBQT(receptorTxt).length : 0 },
+  mapa: mapaDatos && { filas: mapaDatos.filas.map((f) => ({ nombre: f.nombre, nPoses: f.nPoses,
+    cluster: f.cluster, res: [...f.cuenta.entries()].map(([r, e]) => [r, e.n]) })),
+    columnas: mapaDatos.columnas, usarCluster: mapaDatos.usarCluster },
   conjuntos: conjuntos.map((c) => ({ nombre: c.nombre, tipo: c.tipo, poses: c.poses.length, clusters: c.clusters.length })),
   cual: conjActual, clusters: (conjuntos[conjActual] || {}).clusters || [],
   poseSel: +$('poseSel').value, clusterDeLaPose: (posesC[+$('poseSel').value] || {}).cluster,
